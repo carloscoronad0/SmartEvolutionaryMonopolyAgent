@@ -9,9 +9,10 @@ def create_go(data) -> Tuple[Square.Square, Properties.BoardComponent]:
 
 
 def create_street(data) -> Tuple[Square.Square, Properties.BoardComponent]:
-    (name, index, type, cost, mortgage, rent, street_color, house_price) = data
-    street_property = Properties.StreetProperty(name=name, index=index, type=type, cost=cost, mortgage=mortgage,
-        rent=rent, street_color=street_color, house_price=house_price)
+    (name, index, type, property_index, cost, mortgage, rent, street_index, street_color, house_price) = data
+    street_property = Properties.StreetProperty(name=name, index=index, type=type, property_index=property_index, 
+        cost=cost, mortgage=mortgage, free_mortgage=round(mortgage + (0.10 * mortgage)), rent=rent, 
+        street_index=street_index, street_color=street_color, house_price=house_price)
     return (SquareStreet.SquareStreet(street_property), street_property)
 
 
@@ -52,12 +53,14 @@ def create_parking(data) -> Tuple[Square.Square, Properties.BoardComponent]:
 
 
 def create_railroad(data) -> Tuple[Square.Square, Properties.BoardComponent]:
-    (name, index, type, cost, mortgage, rent) = data
-    railroad_property = Properties.Property(name=name, index=index, type=type, cost=cost, mortgage=mortgage, rent=rent)
+    (name, index, type, property_index, cost, mortgage, rent) = data
+    railroad_property = Properties.Property(name=name, index=index, type=type, property_index=property_index, 
+        cost=cost, mortgage=mortgage, free_mortgage=round(mortgage + (0.10 * mortgage)), rent=rent)
     return (SquareRailRoad.SquareRailRoad(railroad_property), railroad_property)
 
 
 def create_utility(data) -> Tuple[Square.Square, Properties.BoardComponent]:
-    (name, index, type, cost, mortgage, rent) = data
-    utility_property = Properties.Property(name=name, index=index, type=type, cost=cost, mortgage=mortgage, rent=rent)
+    (name, index, type, property_index, cost, mortgage, rent) = data
+    utility_property = Properties.Property(name=name, index=index, type=type, property_index=property_index, 
+        cost=cost, mortgage=mortgage, free_mortgage=round(mortgage + (0.10 * mortgage)), rent=rent)
     return (SquareUtility.SquareUtility(utility_property), utility_property)

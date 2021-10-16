@@ -17,23 +17,30 @@ class MonopolyTable:
         df = pd.read_csv(MONOPOLY_SQUARES, index_col='spaces')
         self.data = df
 
+        property_counter = 0
+        street_counter = 0
+
         for i in range(0, len(df['type'])):
             type = df['type'][i]
             name = df['name'][i]
 
             if type == 'street':
-                data = (name, i, type, int(df['cost'][i]), int(df['mortgage'][i]), int(df['rent_0'][i]), 
-                    df['color'][i], int(df['house_price'][i]))
+                data = (name, i, type, property_counter, int(df['cost'][i]), int(df['mortgage'][i]), int(df['rent_0'][i]), 
+                    street_counter, df['color'][i], int(df['house_price'][i]))
                 self.properties.append(self.load_square(Sc.create_street, data))
+                property_counter += 1
+                street_counter += 1
 
             elif type == 'railroad':
-                data = (name, i, type, int(df['cost'][i]), int(df['mortgage'][i]), int(df['rent_0'][i]))
+                data = (name, i, type, property_counter, int(df['cost'][i]), int(df['mortgage'][i]), int(df['rent_0'][i]))
                 self.properties.append(self.load_square(Sc.create_railroad, data))
+                property_counter += 1
 
             elif type == 'utility':
-                data = (name, i, type, int(df['cost'][i]), int(df['mortgage'][i]), int(df['multiplier_0'][i]))
+                data = (name, i, type, property_counter, int(df['cost'][i]), int(df['mortgage'][i]), int(df['multiplier_0'][i]))
                 self.properties.append(self.load_square(Sc.create_utility, data))
-
+                property_counter += 1
+                
             elif type == 'community':
                 data = (name, i, type)
                 self.load_square(Sc.create_community, data)
