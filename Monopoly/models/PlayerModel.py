@@ -1,101 +1,70 @@
-import Monopoly.models.Properties as p
+import Monopoly.models.BoardComponents as p
 import numpy as np
 
 from Monopoly.models.AgentModels.AgentModel import Agent
-from Monopoly.controllers.OnPropertyActionValidator import PropertyActionValidator as PAV
 from typing import List, Tuple
 
-MAX_IMPROVEMENTS = 5
-MIN_IMPROVEMENTS = 0
-
-
 class Player:
-    def __init__(self, id: int, money: int, agent: Agent, properties: List[p.Property] = [], 
-        streets: List[p.StreetProperty] = []) -> None:
+    def __init__(self, id: int, money: int, agent: Agent, properties: List[p.Property] = []) -> None:
         self.id = id
         self.position = 0
         self.properties = properties
-        self.streets = streets
         self.money = money
+        self.on_jail = False
         self.get_out_of_jail_card = None
         self.agent = agent
-        
-    def do_actions(self):
+    
+    # Meant for the first classification of actions
+    def actions_initiated_by_player(self) -> Tuple[Tuple[int, np.ndarray, np.ndarray, int, int], np.ndarray, np.ndarray, np.ndarray, np.ndarray, bool, bool, bool, bool]:
         pass
 
-    # ----------------------------------------
-    # Agent actions
-    
-    def make_trade_offer(self, player_id: np.ndarray, property_offering: np.ndarray, property_asked: np.ndarray,
-        money_offered: np.ndarray, money_asked: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray, int, int]:
+    # Meant for the second classificaction of actions available
+    def actions_initiated_by_other_entity(self) -> Tuple[bool, int]:
+        pass
 
-        player = np.where(player_id == 1)
-        (found, not_found) = self._mapping_from_binary_to_properties(self.properties, property_offering, self._get_property_index)
-        valids = []
+    #region ACTIONS_INITIATED_BY_PLAYER
 
-        for prop in found:
-            if PAV._validate_sell(prop):
-                valids.append(prop.index)
+    def make_trade_offer(self, trade_binary_representation: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray, int, int]:
+        """
+        Punish if: 
+            - Property is not Owned by the player
+            - Property has houses or a hotel
 
-        if len(valids) == len(found):
-            money_off = self._transform_money(money_offered, self._calculate_properties_net_value(found))
-            return (player, valids, property_asked, money_off, money_asked)
-        else:
-            return None
+        Format:
+            - [Offered Properties] -> 28
+            - [Wished Properties] -> 28
+            - [Money offered] -> 1 : Percentage * own Money
+            - [Wished Money] -> 1 : Percentage * own Money
+            - [Target Player] -> 3 : [PA, PB, PC]
+        """
+
+        property_offering = trade_binary_representation[0:27].copy()
+        property_asked = trade_binary_representation[28:55].copy()
+        percentage_money_offered = trade_binary_representation[56].copy()
+        percentage_money_asked = trade_binary_representation[57].copy()
+        player = trade_binary_representation[58:60].copy()
+
+        print(f"{property_offering}\n{property_asked}\n{percentage_money_offered}\n{percentage_money_asked}\n{player}")
+
+        offer = np.where(property_offering == 1)
+        asked = np.where(property_asked == 1)
+        money_offer = self._transform_money(self.money, percentage_money_offered)
+        money_ask = self._transform_money(self.money, percentage_money_asked)
+        target_player_id = np.where(player == 1)
+
+        return (target_player_id, offer, asked, money_offer, money_ask)
 
     def improve_property(self, streets_binary: np.ndarray) -> np.ndarray:
-        (found, not_found) = self._mapping_from_binary_to_properties(self.streets, streets_binary, self._get_street_index)
-        valids = []
-
-        for prop in found:
-            if prop.set_completed:
-                color_group = self.get_color_group(prop.street_color)
-                if PAV._validate_street_improvement(prop, color_group):
-                    valids.append(prop.index)
-
-        if len(valids) == len(found):
-            return np.array(valids)
-        else:
-            return None
+        return np.where(streets_binary == 1)
 
     def sell_house_hotel(self, streets_binary: np.ndarray) -> np.ndarray:
-        (found, not_found) = self._mapping_from_binary_to_properties(self.streets, streets_binary, self._get_street_index)
-        valids = []
-
-        for prop in found:
-            if prop.set_completed:
-                color_group = self.get_color_group(prop.street_color)
-                if PAV._validate_street_breakdown(prop, color_group):
-                    valids.append(prop.index)
-
-        if len(valids) == len(found):
-            return np.array(valids)
-        else:
-            return None
-
+        return np.where(streets_binary == 1)
+    
     def mortgage_properties(self, mortgage_binary: np.ndarray) -> np.ndarray:
-        (found, not_found) = self._mapping_from_binary_to_properties(self.properties , mortgage_binary, self._get_property_index)
-        valids = [prop.index for prop in found if PAV._validate_mortgage(prop)]
-        
-        if len(valids) == len(found):
-            return np.array(valids)
-        else:
-            return None
+        return np.where(mortgage_binary == 1)
 
     def free_mortgage(self, free_binary: np.ndarray) -> np.ndarray:
-        (found, not_found) = self._mapping_from_binary_to_properties(self.properties , free_binary, self._get_property_index)
-        valids = []
-        aux_money = self.money
-
-        for prop in found:
-            if PAV._validate_free_mortgage(aux_money, prop):
-                valids.append(prop.index)
-                aux_money -= prop.free_mortgage
-        
-        if len(valids) == len(found):
-            return np.array(valids)
-        else:
-            return None
+        return np.where(free_binary == 1)
 
     def conclude_actions(self, conclude_binary: int) -> bool:
         return conclude_binary > 0
@@ -106,61 +75,67 @@ class Player:
     def pay_jail_fine(self, pay_fine_binary: int) -> bool:
         return pay_fine_binary > 0
 
-    def accept_trade_offer(self, accept_binary: int) -> bool:
-        return accept_binary > 0
-
     def buy_property(self, buy_binary: int) -> bool:
         return buy_binary > 0
 
-    # --------------------------------------------------
-    # Game actions
+    #endregion ACTIONS_INITIATED_BY_PLAYER
+
+    #region ACTIONS_INITIATED_BY_OTHER_ENTITY
+
+    def accept_trade_offer(self, accept_binary: int) -> bool:
+        return accept_binary > 0
+
+    def continue_in_auction(self, continue_info: Tuple[int, int]):
+        pass
+
+    #endregion ACTIONS_INITIATED_BY_OTHER_ENTITY
+
+    #region GAME_ACTIONS
+
+    def enough_money(self, amount: int):
+        return self.money >= amount
+
+    def add_property(self, new_property: p.Property):
+        self.properties.append(new_property)
+
+    def remove_property(self, removed_property: p.Property):
+        self.properties.remove(removed_property)
 
     def advance(self, number_of_squares: int) -> int:
         self.position = self.position + number_of_squares
         return self.position
 
-    def pay_service(self, amount_to_pay: int, service: str) -> int:
-        self.money = self.money - amount_to_pay
+    def pay_service(self, amount_to_pay: int, service: str = "") -> int:
+        self.money -= amount_to_pay
         
         if self.is_bankrupt():
-            return -1
+            return None
         else:
             return amount_to_pay
 
-    def _get_property_index(self, property: p.Property) -> int:
-        return property.property_index
+    def pay_transaction(self, amount_to_pay: int, transaction_details: str = "") -> int:
+        """
+        Transactions are initiated by players so they are not mandatory, tha validation of the amount of money
+        is made in the bank and when its validated the player can continue with the transaction the money is
+        asked to be given.
 
-    def _get_street_index(self, street: p.StreetProperty) -> int:
-        return street.street_index
+        That's the reason why in this function there's no verification of brankruptcy
+        """
+        self.money -= amount_to_pay
+        return amount_to_pay
 
-    @staticmethod
-    def _mapping_from_binary_to_properties(properties: List[p.Property] ,binary_representation: np.ndarray, get_index) -> Tuple[List[p.Property], np.ndarray]:
-        print("Mapping properties")
-        properties_indexes = np.where(binary_representation == 1)
-        owned_properties = []
+    def receive_payment(self, amount_received: int, payment_details: str = ""):
+        self.money += amount_received
 
-        for prop in properties:
-            i = get_index(prop)
-            if properties_indexes.__contains__(i):
-                print(f"Found {prop} of index {i}")
-                owned_properties.append(prop)
-                properties_indexes.remove(i)
+    def is_bankrupt(self):
+        pass
 
-        # returns the properties that the player owns, the properties found are removed from 
-        # properties_indexes, so the list is returned to represent the ones that were not found
-        return (owned_properties, properties_indexes)
-    
-    def _get_color_group(self, color: str) -> List[p.StreetProperty]:
-        return [prop for prop in self.streets if prop.street_color == color]
+    #endregion GAME_ACTIONS
+
+    #region AUX_FUNCTIONS
 
     @staticmethod
-    def _calculate_properties_net_value(properties: List[p.Property]):
-        return sum([prop.cost for prop in properties])
+    def _transform_money(baseline_money: float, percentage: float) -> int:
+        return int(percentage * baseline_money)
 
-    @staticmethod
-    def _transform_money(money_identificator: np.ndarray, net_value: int):
-        # +1 because the ponderations are 1/1 1/2 1/3 1/4 and indexes start from 0
-        # so +1 is required to meet a right ponderation
-        ponderation = sum(np.where(money_identificator == 1)) + 1
-
-        return net_value * (1/ponderation)
+    #endregion AUX_FUNCTIONS

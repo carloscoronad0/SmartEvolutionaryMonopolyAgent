@@ -6,12 +6,11 @@ MONOPOLY_SQUARES = "Monopoly/MonopolySquares.csv"
 
 class MonopolyTable:
     def __init__(self):
-        self.squares = []
-        self.properties = []
+        self.squares = [] # All squares 
+        self.properties = [] # Just properties
 
-        self.data = None
-
-        self.load_squares()
+        self.data = None # Where all the csv data is going to be stored
+        self.load_squares() # Load squares into the lists
 
     def load_squares(self):
         df = pd.read_csv(MONOPOLY_SQUARES, index_col='spaces')

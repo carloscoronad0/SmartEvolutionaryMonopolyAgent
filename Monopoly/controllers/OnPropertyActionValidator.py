@@ -1,4 +1,4 @@
-import Monopoly.models.Properties as p
+import Monopoly.models.BoardComponents as p
 from typing import List
 
 MAX_IMPROVEMENTS = 5

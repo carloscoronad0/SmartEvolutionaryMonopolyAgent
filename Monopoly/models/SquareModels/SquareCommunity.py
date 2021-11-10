@@ -1,5 +1,5 @@
 from Monopoly.models.SquareModels.Square import Square
-from Monopoly.models.Properties import BoardComponent
+from Monopoly.models.BoardComponents import BoardComponent
 
 
 class SquareCommunity(Square):

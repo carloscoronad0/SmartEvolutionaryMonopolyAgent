@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from Monopoly.models.Properties import BoardComponent
+from Monopoly.models.BoardComponents import BoardComponent
 
 
 class Square(ABC):

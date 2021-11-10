@@ -1,5 +1,5 @@
 from Monopoly.models.SquareModels import Square, SquareGo, SquareStreet, SquareTax, SquareJail, SquareJailVisit, SquareChance, SquareCommunity, SquareParking, SquareRailRoad, SquareUtility
-from Monopoly.models import Properties
+from Monopoly.models import BoardComponents as Properties
 from typing import Tuple
 
 def create_go(data) -> Tuple[Square.Square, Properties.BoardComponent]:
