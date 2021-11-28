@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+# from Monopoly.models.PlayerModel import Player
 
 MAX_IMPROVEMENTS = 5
 MIN_IMPROVEMENTS = 0
@@ -20,7 +21,7 @@ class Property(BoardComponent):
     mortgage: int
     free_mortgage: int
     rent: int
-    owner: int = 0
+    owner = None
     mortgage_state: bool = False
     
     def _is_mortaged(self):
@@ -28,6 +29,9 @@ class Property(BoardComponent):
 
     def _is_unmortgaged(self):
         return not self.mortgage_state
+
+    def _change_owner(self, new_owner):
+        self.owner = new_owner
 
 @dataclass
 class StreetProperty(Property):
@@ -53,6 +57,9 @@ class StreetProperty(Property):
     def _is_unimproved(self) -> bool:
         return self.buildings == MIN_IMPROVEMENTS
 
+    def _reset_buildings(self):
+        self.buildings = MIN_IMPROVEMENTS
+
 @dataclass
 class Tax(BoardComponent):
-    multiplier: int
+    tax: int
