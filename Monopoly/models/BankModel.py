@@ -205,7 +205,7 @@ class Bank:
                 self.transfer_property_bank_to_owner(prop, target_player)
 
         # The bankrupt_player variable now points to nothing
-        bankrupt_player = None
+        bankrupt_player.bankrupted = True
     
     #region TRANSACTIONS
 
@@ -318,6 +318,32 @@ class Bank:
         if valid:
             player_to_buy.pay_transaction(property_to_buy.cost, f"Paying {property_to_buy.cost} to buy {property_to_buy.name}")
             self.transfer_property_bank_to_owner(property_to_buy, player_to_buy)
+
+        return (valid, args)
+
+    def pay_jail_fine_transaction(self, player_in_jail: Player, jail_fine: int):
+        money_issue = player_in_jail.money >= jail_fine
+        valid = False
+
+        if money_issue & player_in_jail.in_jail:
+            valid = True
+            
+            player_in_jail.pay_transaction(jail_fine, f"Paying {jail_fine} to get out of jail")
+            player_in_jail.in_jail = False
+
+        args = [(money_issue, jail_fine)]
+        return (valid, args)
+
+    def use_get_out_of_jail_card(self, player_in_jail: Player):
+        valid = False
+
+        if player_in_jail.out_of_jail_card & player_in_jail.in_jail:
+            valid = True
+
+            player_in_jail.out_of_jail_card = False
+            player_in_jail.in_jail = False
+
+        args = [(player_in_jail.out_of_jail_card, player_in_jail.in_jail)]
 
         return (valid, args)
 

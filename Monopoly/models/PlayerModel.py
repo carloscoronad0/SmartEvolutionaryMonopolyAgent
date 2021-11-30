@@ -6,14 +6,15 @@ from Monopoly.models.AgentModels.AgentModel import Agent
 from typing import List, Tuple
 
 class Player:
-    def __init__(self, id: int, money: int, agent: Agent) -> None:
-        self.id = id
+    def __init__(self, player_id: int, money: int, agent: Agent):
+        self.player_id = player_id
         self.position = 0
         self.money = money
-        self.on_jail = False
+        self.in_jail = False
         self.out_of_jail_card = False
         self.agent = agent
         self.properties = []
+        self.bankrupted = False
     
     #region GAME_ACTIONS
 
@@ -35,7 +36,7 @@ class Player:
         """
         # Reduces the player's money amount by the received parameter
         self.money -= amount_to_pay
-        print(f"On player {self.id}")
+        print(f"On player {self.player_id}")
         print(transaction_details)
         return amount_to_pay
 

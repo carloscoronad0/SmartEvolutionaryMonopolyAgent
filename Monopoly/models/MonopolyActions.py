@@ -16,39 +16,26 @@ class ActionType(Enum):
     AcceptTradeOffer = 10
     BuyProperty = 11
 
-class EntityType(Enum):
-    Player = 1
-    OtherEntity = 2
+PRE_ROLL_ACTIONS: List[ActionType] = [ActionType.ConcludeActions, ActionType.MakeTradeOffer, ActionType.ImproveProperty,
+        ActionType.SellHouseOrHotel, ActionType.MortgageProperty, ActionType.FreeMortgage]
+
+PRE_ROLL_ACTIONS_IN_JAIL: List[ActionType] = [ActionType.ConcludeActions, ActionType.MakeTradeOffer, 
+        ActionType.ImproveProperty, ActionType.SellHouseOrHotel, ActionType.MortgageProperty, ActionType.FreeMortgage,
+        ActionType.UseGetOutOfJailCard, ActionType.PayJailFine]
+
+POST_ROLL_ACTIONS: List[ActionType] = [ActionType.ConcludeActions, ActionType.SellHouseOrHotel, 
+        ActionType.MortgageProperty, ActionType.FreeMortgage]
+
+POST_ROLL_COUTING_PROPERTY_ACTIONS: List[ActionType] = [ActionType.ConcludeActions, ActionType.SellHouseOrHotel, 
+        ActionType.MortgageProperty, ActionType.FreeMortgage, ActionType.BuyProperty]
+
+OUT_OF_TURN_ACTIONS: List[ActionType] = [ActionType.ConcludeActions, ActionType.MakeTradeOffer, 
+        ActionType.ImproveProperty, ActionType.SellHouseOrHotel, ActionType.MortgageProperty, ActionType.FreeMortgage]
 
 class PropertyType(Enum):
     Property = 1
     Street = 2
     Neither = 3
-
-class GamePhaseType(Enum):
-    PreRoll = 1
-    OutOfTurn = 2
-    PostRoll = 3
-
-@dataclass
-class Action:
-    """
-    Determines the components that classify an action
-    
-    Used for determining which actions are posible for the player during the game
-
-        There's going to be one Action instance for each of the ActionTypes, depending on the game 
-        phase of a turn, the game is going to determine, based on it's rules, which actions are
-        valid for the player to take.
-
-    It's worth saying that this action representation is mainly to facilitate the flow of the program,
-    it was not included because of Object Oriented Programming rules. 
-    """
-    type: ActionType
-    initiatedBy: EntityType
-    associatedProperties: PropertyType
-    gamePhase: GamePhaseType
-    responseExpectedDimension: int
 
 @dataclass
 class ActionStructure:
