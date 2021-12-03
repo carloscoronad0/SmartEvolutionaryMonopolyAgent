@@ -46,23 +46,26 @@ class OnPropertyActionValidator:
         money_offer: int, money_asked: int, initial_player_money: int, target_player_money: int):
 
         # The properties to take part of the trade musn't have any buildings on them 
-        offer_building_issue = [prop._is_unimproved() for prop in valid_properties_offer if prop.type == "street"]
-        asked_building_issue = [prop._is_unimproved() for prop in valid_properties_asked if prop.type == "street"]
+        offer_building = [prop._is_unimproved() for prop in valid_properties_offer if prop.type == "street"]
+        asked_building = [prop._is_unimproved() for prop in valid_properties_asked if prop.type == "street"]
+
+        offer_building_issue = all(offer_building)
+        asked_building_issue = all(asked_building)
 
         # There shouldn't be any invalid properties in the transaction
         not_valid_offer_issue = len(not_valid_offered_properties) == 0
         not_valid_asked_issue = len(not_valid_asked_properties) == 0
 
         # The money offered and the money asked should be in the range of the amount each player has
-        money_offer_issue = money_offer >= initial_player_money
-        money_asked_issue = money_asked >= target_player_money
+        money_offer_issue = money_offer <= initial_player_money
+        money_asked_issue = money_asked <= target_player_money
 
         # For the decision to be valid, all the issues must be passed succesfully
         valid = (offer_building_issue & asked_building_issue & not_valid_offer_issue & not_valid_asked_issue &
             money_offer_issue & money_asked_issue)
 
         # Specifications for the player, to identify which part of the decision was wrong
-        args = [(offer_building_issue, valid_properties_offer), (asked_building_issue, valid_properties_asked), 
+        args = [(offer_building_issue, offer_building), (asked_building_issue, asked_building), 
             (not_valid_offer_issue, not_valid_offered_properties), (not_valid_asked_issue, not_valid_asked_properties),
             (money_offer_issue, initial_player_money), (money_asked_issue, target_player_money)]
         

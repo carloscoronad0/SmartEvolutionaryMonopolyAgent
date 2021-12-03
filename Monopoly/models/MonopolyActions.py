@@ -16,6 +16,10 @@ class ActionType(Enum):
     AcceptTradeOffer = 10
     BuyProperty = 11
 
+class ActionInitializationType(Enum):
+    InitiatedByPlayer = 1
+    InitiatedByOtherEntity = 2
+
 PRE_ROLL_ACTIONS: List[ActionType] = [ActionType.ConcludeActions, ActionType.MakeTradeOffer, ActionType.ImproveProperty,
         ActionType.SellHouseOrHotel, ActionType.MortgageProperty, ActionType.FreeMortgage]
 
@@ -55,8 +59,8 @@ class TradeActionStructure(ActionStructure):
 
     It's not relevant if the list is sorted
     """
-    propertyOffer: List[BCs.Property]
-    propertyAsked: List[BCs.Property]
+    propertyOffer: List[int]
+    propertyAsked: List[int]
     moneyOffered: int
     moneyAsked: int
     targetPlayerId: int
@@ -80,7 +84,7 @@ class PropertyActionStructure(ActionStructure):
 
     It's not relevant if the list is sorted
     """
-    associatedPropertyList: List[BCs.Property]
+    associatedPropertyList: List[int]
     propertyType: PropertyType
 
 @dataclass

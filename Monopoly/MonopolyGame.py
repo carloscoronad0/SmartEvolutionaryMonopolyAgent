@@ -1,10 +1,9 @@
-from Monopoly.controllers.OnPropertyActionValidator import MAX_IMPROVEMENTS
-from Monopoly.models.AgentModels.AgentModel import Agent
+from Monopoly.models.AgentModels.BaseAgentModel import Agent
 from Monopoly.models.MonopolyTableModel import MonopolyTable
 from Monopoly.models.PlayerModel import Player
 from Monopoly.models.BankModel import Bank
-from Monopoly.models.SquareModels.Square import Square
-from typing import List, Tuple, Dict
+from Monopoly.models.MonopolyStates import RegularMonopolyState
+from typing import List, Dict
 
 import random
 import numpy as np
@@ -12,11 +11,12 @@ import Monopoly.models.MonopolyActions as MAs
 
 STARTING_MONEY = 1500
 MAX_ACTION_MOVES = 3
+GO_INDEX = 0
 
 class MonopolyGame:
     def __init__(self, agents: List[Agent]):
         player_number = len(agents)
-        self.dice = (0,0)
+        self.dice = [1, 1]
         self.jail_fine = 50
         
         aux_players = [Player(player_id=i, money=STARTING_MONEY, agent=agents[i]) for i in range(0, player_number)]
@@ -38,6 +38,10 @@ class MonopolyGame:
         for i in range(len(players)):
             self.roll_dice()
             number = sum(self.dice)
+            while dice_roll_list.__contains__(number):
+                self.roll_dice()
+                number = sum(self.dice)
+
             dice_roll_list.append(number)
             dice_roll_dic[number] = i
 
@@ -51,22 +55,27 @@ class MonopolyGame:
         return official_player_list
 
     def roll_dice(self):
-        self.dice = (random.randrange(1,6), random.randrange(1,6))
+        self.dice = [random.randrange(1,6), random.randrange(1,6)]
 
-    def move_player(self, player: Player) -> int:
-        new_position = player.advance(sum(self.dice))
+    def move_player(self, player: Player, state: RegularMonopolyState) -> int:
+        dice_val = sum(self.dice)
+        if self.table.passed_threw_go(player.position, (player.position + dice_val)):
+            self.table.squares[self.table.go_index].action(self, player, self.bank, self.table, state, dice_val)
+
+        new_position = player.advance_on_table(dice_val, 40)
         return new_position
 
-    def go_to_jail(self, player: Player):
-        self.table.send_player_to_jail(player)
-
     def perform_actions(self, player: Player, player_action_list: List[MAs.ActionStructure]):
-        conclude_action: MAs.BinaryActionStructure = player_action_list.pop(0)
         player_actions_response = []
+        performed_action_type:MAs.ActionType = []
+
+        conclude_action: MAs.BinaryActionStructure = player_action_list.pop(0)
+
         for action in player_action_list:
+            performed_action_type.append(action.actionType)
             player_actions_response.append(self.action_execution(player, action))
             
-        return (conclude_action.response, player_actions_response)
+        return (conclude_action.response, player_actions_response, performed_action_type)
 
     def find_player(self, search_id: int):
         for p in self.players:
@@ -84,13 +93,14 @@ class MonopolyGame:
             target_player = self.find_player(trade_offer.targetPlayerId)
             # If the target player was found then perform the action
             if target_player != None:
-                return self.bank.trade_assets(trade_offer.propertyOffer, trade_offer.propertyAsked, 
+                if target_player.player_id != player.player_id:
+                    return self.bank.trade_assets(trade_offer.propertyOffer, trade_offer.propertyAsked, 
                         trade_offer.moneyOffered, trade_offer.moneyAsked, player, target_player)
-            else:
-                # If the target player was not found then the initial decision was wrong
-                # and the player must be informed about it.
-                # An empty args list is used to indicate this error in particular
-                return (False, [])
+            
+            # If the target player was not found then the initial decision was wrong
+            # and the player must be informed about it.
+            # An empty args list is used to indicate this error in particular
+            return (False, [])
 
         elif action.actionType == MAs.ActionType.ImproveProperty:
             # Type-casting the action
@@ -127,7 +137,8 @@ class MonopolyGame:
         elif action.actionType == MAs.ActionType.BuyProperty:
             buy_property_action: MAs.BinaryActionStructure = action
             if buy_property_action.response:
-                return self.bank.buy_property_transaction(player.position, player)
+                return self.bank.buy_property_transaction(self.table.squares[player.position].board_component.property_index, 
+                    player)
             else:
                 return None
 
@@ -136,13 +147,20 @@ class MonopolyGame:
         continue_turn = True # continue rolling the dice
         continue_actions = True
         action_count = 0
-        state = [self.players, self.bank.properties]
+        state = RegularMonopolyState()
+        state.stateType = MAs.ActionInitializationType.InitiatedByPlayer
+        state.info = "From Monopoly Game"
+        state.playerInTurnId = player.player_id
+        state.playersInGame = self.players
+        state.propertiesInGame = self.bank.properties
 
         while continue_turn:
 
             # PRE ROLL ACTIONS --------------------------------------------------------
             continue_actions = True
             action_count = 0
+
+            print("PRE ROLL ------------------------------------")
 
             while continue_actions & (action_count < MAX_ACTION_MOVES):
                 if player.in_jail:
@@ -151,32 +169,35 @@ class MonopolyGame:
                     valid_decisions_to_take = MAs.PRE_ROLL_ACTIONS
                 
                 player_action_list = player.actions(valid_decisions_to_take, state)
-                (conclude, response_list) = self.perform_actions(player, player_action_list)
-                player.inform_decision_quality(valid_decisions_to_take, response_list)
+                (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
+                player.inform_decision_quality(performed, response_list)
 
-                continue_actions = conclude
+                continue_actions = not conclude
                 action_count += 1
 
             # Roll dice
-            self.dice = self.roll_dice()
+            self.roll_dice()
 
             # If the dice is double
             if self.dice[0] == self.dice[1]:
+                print("\nDOUBLES\n")
                 doubles += 1 # The number adds up
 
                 if doubles == 3: # If the number is already 3
-                    self.go_to_jail(player) # The player goes to jail
+                    # The player goes to jail
+                    self.table.squares[self.table.jail_index].action(player, self.bank, self.table.squares, state, sum(self.dice))
                     continue_turn = False # The player's turn ends
                 else:
-                    new_position = self.move_player(player)
-                    self.table.perform_square_action(new_position, player)
+                    new_position = self.move_player(player, state)
+                    self.table.squares[new_position].action(player, self.bank, self.table.squares, state, sum(self.dice))
             else:
                 # If it's not a double, then the player has no right to throw again
                 continue_turn = False
-                new_position = self.move_player(player)
-                self.table.perform_square_action(new_position, player)
+                new_position = self.move_player(player, state)
+                self.table.squares[new_position].action(player, self.bank, self.table.squares, state, sum(self.dice))
 
             # POST ROLL ACTIONS -------------------------------------------------------
+            print("POST ROLL ------------------------------------")
             if (not player.in_jail) & (not player.bankrupted):
                 continue_actions = True
                 action_count = 0
@@ -188,22 +209,23 @@ class MonopolyGame:
                         valid_decisions_to_take = MAs.POST_ROLL_ACTIONS
 
                     player_action_list = player.actions(valid_decisions_to_take, state)
-                    (conclude, response_list) = self.perform_actions(player, player_action_list)
-                    player.inform_decision_quality(valid_decisions_to_take, response_list)
+                    (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
+                    player.inform_decision_quality(performed, response_list)
 
-                    continue_actions = conclude
+                    continue_actions = not conclude
                     action_count += 1
 
+        print("OUT OF TURN ------------------------------------")
         for p in rest_of_players:
             continue_actions = True
             action_count = 0
 
             while continue_actions & (action_count < MAX_ACTION_MOVES):
                 player_action_list = p.actions(MAs.OUT_OF_TURN_ACTIONS, state)
-                (conclude, response_list) = self.perform_actions(p, player_action_list)
-                p.inform_decision_quality(MAs.OUT_OF_TURN_ACTIONS, response_list)
+                (conclude, response_list, performed) = self.perform_actions(p, player_action_list)
+                p.inform_decision_quality(performed, response_list)
 
-                continue_actions = conclude
+                continue_actions = not conclude
                 action_count += 1
 
     def monopoly_game(self):

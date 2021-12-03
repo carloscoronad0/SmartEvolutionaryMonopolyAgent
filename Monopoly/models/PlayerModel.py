@@ -2,7 +2,8 @@ import Monopoly.models.BoardComponents as BCs
 import Monopoly.models.MonopolyActions as MAs
 import numpy as np
 
-from Monopoly.models.AgentModels.AgentModel import Agent
+from Monopoly.models.AgentModels.BaseAgentModel import Agent
+from Monopoly.models.MonopolyStates import MonopolyState
 from typing import List, Tuple
 
 class Player:
@@ -81,17 +82,30 @@ class Player:
         
         total_net_value = self.money + property_money
 
-        is_bankrupt = total_net_value >= amount
+        is_bankrupt = amount > total_net_value
         return is_bankrupt
 
     #endregion GAME_ACTIONS
 
     #region ASK_AGENT
     
-    def actions(self, valid_actions: List[MAs.ActionType], state) -> List[MAs.ActionStructure]:
-        pass
+    def actions(self, valid_actions: List[MAs.ActionType], state: MonopolyState) -> List[MAs.ActionStructure]:
+        return self.agent.take_decisions(valid_actions, state)
 
     def inform_decision_quality(self, decisions_to_inform: List[MAs.ActionType], args_list):
-        pass
+        self.agent.decision_quality(decisions_to_inform, args_list)
 
     #endregion ASK_AGENT
+
+    #region AUX_FUNCTIONS
+
+    def player_info(self):
+        info = {"Player_id": self.player_id,
+                "Position": self.position,
+                "Money" : self.money,
+                "In_Jail": self.in_jail,
+                "Out_Of_Jail_Free_Card": self.out_of_jail_card,
+                "Bankrupted": self.bankrupted}
+        return info
+
+    #endregion AUX_FUNCTIONS

@@ -1,8 +1,7 @@
 import pandas as pd
-import numpy as np
 import Monopoly.controllers.SquareCreator as Sc
+import random
 
-from Monopoly.models.PlayerModel import Player
 from Monopoly.models.SquareModels.Square import Square
 from typing import List
 
@@ -13,6 +12,13 @@ class MonopolyTable:
     def __init__(self):
         self.squares: List[Square] = [] # All squares 
         self.jail_index = 0
+        self.go_index = 0
+
+        self.chance_card_list = [i for i in range(16)]
+        self.community_chest_card_list = [i for i in range(16)]
+
+        random.shuffle(self.chance_card_list)
+        random.shuffle(self.community_chest_card_list)
 
     def load_squares(self):
         df = pd.read_csv(MONOPOLY_SQUARES, index_col='spaces')
@@ -67,7 +73,7 @@ class MonopolyTable:
                 property_counter += 1
                 
             elif element_type == 'community':
-                data = (name, i, element_type)
+                data = (name, i, element_type, self.community_chest_card_list)
                 self.load_square(Sc.create_community, data)
                 
             elif element_type == 'tax':
@@ -75,7 +81,7 @@ class MonopolyTable:
                 self.load_square(Sc.create_tax, data)
 
             elif element_type == 'chance':
-                data = (name, i, element_type)
+                data = (name, i, element_type, self.chance_card_list)
                 self.load_square(Sc.create_chance, data)
 
             elif element_type == 'jail-visit':
@@ -87,6 +93,7 @@ class MonopolyTable:
                 self.load_square(Sc.create_parking, data)
 
             elif element_type == 'go':
+                self.go_index = i
                 data = (name, i, element_type)
                 self.load_square(Sc.create_go, data)
 
@@ -102,15 +109,14 @@ class MonopolyTable:
         self.squares.append(square)
         return component
 
-    def send_player_to_jail(self, player: Player):
-        self.perform_square_action(self.jail_index, player)
-
-    def perform_square_action(self, square_index: int, player: Player):
-        self.squares[square_index].action()
-
     def is_square_property_available(self, square_index: int) -> bool:
         if PROPERTY_ELEMENT_TYPES.__contains__(self.squares[square_index].board_component.type):
             if self.squares[square_index].board_component.owner == None:
                 return True
 
+        return False
+
+    def passed_threw_go(self, old_position: int, new_position: int):
+        if (old_position < self.go_index) & (new_position > self.go_index):
+            return True
         return False

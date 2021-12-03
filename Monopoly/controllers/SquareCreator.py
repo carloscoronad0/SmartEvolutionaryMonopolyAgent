@@ -1,12 +1,11 @@
 from Monopoly.models.SquareModels import Square, SquareGo, SquareStreet, SquareTax, SquareJail, SquareJailVisit, SquareChance, SquareCommunity, SquareParking, SquareRailRoad, SquareUtility
-import  Monopoly.models.BoardComponents as Properties
 from typing import Tuple
+import Monopoly.models.BoardComponents as Properties
 
 def create_go(data) -> Tuple[Square.Square, Properties.BoardComponent]:
     (name, index, element_type) = data
     go_component = Properties.BoardComponent(name, index, type=element_type)
     return (SquareGo.SquareGo(go_component), go_component)
-
 
 def create_street(data) -> Tuple[Square.Square, Properties.BoardComponent]:
     (name, index, element_type, property_index, cost, mortgage, rent, street_index, street_color, house_price) = data
@@ -29,14 +28,16 @@ def create_jail(data) -> Tuple[Square.Square, Properties.BoardComponent]:
 
 
 def create_chance(data) -> Tuple[Square.Square, Properties.BoardComponent]:
-    (name, index, element_type) = data
-    chance_component = Properties.BoardComponent(name=name, index=index, type=element_type)
+    (name, index, element_type, chance_cards) = data
+    chance_component = Properties.ComponentToDrawCards(name=name, index=index, 
+        type=element_type, cardList=chance_cards)
     return (SquareChance.SquareChance(chance_component), chance_component)
 
 
 def create_community(data) -> Tuple[Square.Square, Properties.BoardComponent]:
-    (name, index, element_type) = data
-    community_component = Properties.BoardComponent(name=name, index=index, type=element_type)
+    (name, index, element_type, community_cards) = data
+    community_component = Properties.ComponentToDrawCards(name=name, index=index, 
+        type=element_type, cardList=community_cards)
     return (SquareCommunity.SquareCommunity(community_component), community_component)
 
 

@@ -3,6 +3,8 @@ import Monopoly.models.MonopolyActions as MAs
 import numpy as np
 
 from Monopoly.models.PlayerModel import Player
+from Monopoly.models.MonopolyStates import RegularMonopolyState, OfferActionMonopolyState
+from Monopoly.models.MonopolyActions import ActionInitializationType
 from Monopoly.controllers.OnPropertyActionValidator import OnPropertyActionValidator as OPAV
 from typing import List, Tuple, Dict
 
@@ -56,7 +58,12 @@ class Bank:
                 # The state for the auction --------------------------------------------------------------------
                 # The only relevant information is the property in auction, the highest money offer and it's own
                 # properties
-                state = [property_in_auction, highest_money_offer, player.properties]
+                state = OfferActionMonopolyState()
+                state.stateType = ActionInitializationType.InitiatedByOtherEntity
+                state.info = "From Bank in Auction process"
+                state.targetPlayer = player
+                state.offerdProperties = [property_in_auction]
+                state.moneyAsked = highest_money_offer
                 # ----------------------------------------------------------------------------------------------
 
                 # Ask the player to take the specific auction decision based on the state passed
@@ -82,7 +89,7 @@ class Bank:
             players_in_auction = players_who_want_to_continue
 
         # Pay the transaction
-        specifications: str = "--Auction Concluded--\n\tPaying for property " + property_in_auction.name + "\n\tAt the price: " + highest_money_offer
+        specifications: str = f"--Auction Concluded--\n\tPaying for property {property_in_auction.name} \n\tAt the price: {highest_money_offer}"
         highest_bid_player.pay_transaction(highest_money_offer, specifications)
 
         # Transfer the property
@@ -104,8 +111,8 @@ class Bank:
             auction function).
         """
         
-        (valid_properties_offer, not_valid_offered_properties) = self._get_indicated_properties(self.properties, initial_player.id, property_offer_index)
-        (valid_properties_asked, not_valid_asked_properties) = self._get_indicated_properties(self.properties, target_player.id, property_asked_index)
+        (valid_properties_offer, not_valid_offered_properties) = self._get_indicated_properties(self.properties, initial_player.player_id, property_offer_index)
+        (valid_properties_asked, not_valid_asked_properties) = self._get_indicated_properties(self.properties, target_player.player_id, property_asked_index)
 
         # Validate the initial player decision
         (valid, args) = OPAV._isTradeValid(valid_properties_offer, valid_properties_asked, not_valid_offered_properties,
@@ -114,8 +121,15 @@ class Bank:
         # If the decision is valid -> Must ask the target player if the trade is accepted
         if valid: 
             # Form the state of the trade environment 
-            state = [valid_properties_offer, valid_properties_asked, money_offer, money_asked, 
-                initial_player.properties, target_player.properties]
+            state = OfferActionMonopolyState()
+            state.stateType = ActionInitializationType.InitiatedByOtherEntity
+            state.info = "From Bank in trade process"
+            state.initialPlayer = initial_player
+            state.targetPlayer = target_player
+            state.offerdProperties = valid_properties_offer
+            state.askedProperties = valid_properties_asked
+            state.moneyOffer = money_offer
+            state.moneyAsked = money_asked
 
             aux = target_player.actions([MAs.ActionType.AcceptTradeOffer], state)
             decision: MAs.BinaryActionStructure = aux.pop(0)
@@ -130,19 +144,19 @@ class Bank:
                     self.transfer_property_owner_to_owner(prop, target_player, initial_player)
 
                 # Exchange Money
-                initial_player_transfer_payment_details: str = (f"Trade accepted by player {target_player.id}\n" + 
+                initial_player_transfer_payment_details: str = (f"Trade accepted by player {target_player.player_id}\n" + 
                     f"\tTransfering offered money amount {money_offer}")
                 intial_pay_amount = initial_player.pay_transaction(money_offer, initial_player_transfer_payment_details)
 
-                target_player_receiving_details: str = (f"Receiving payment for trade action from player {initial_player.id}\n" + 
+                target_player_receiving_details: str = (f"Receiving payment for trade action from player {initial_player.player_id}\n" + 
                     f"\tAmount to receive: {intial_pay_amount}")
                 target_player.receive_payment(intial_pay_amount, target_player_receiving_details)
 
-                target_player_transfer_payment_details: str = (f"Paying to the trade to player {initial_player.id}\n" + 
+                target_player_transfer_payment_details: str = (f"Paying to the trade to player {initial_player.player_id}\n" + 
                     f"Asked amount: {money_asked}")
                 target_pay_amount = target_player.pay_transaction(money_asked, target_player_transfer_payment_details)
 
-                initial_player_receiving_details: str = (f"Receiving payment for trade action from player {target_player.id}\n" + 
+                initial_player_receiving_details: str = (f"Receiving payment for trade action from player {target_player.player_id}\n" + 
                     f"\tAmount to receive: {target_pay_amount}")
                 initial_player.receive_payment(target_pay_amount, initial_player_receiving_details)
 
@@ -198,7 +212,7 @@ class Bank:
         else: # If the target player is not null the the bankrupt player's debt is with an oponent
             # All the money is transfered to the oponent
             total_money = bankrupt_player.money + sum(house_sell_money)
-            target_player.receive_payment(total_money, f"Receiving {total_money} payment for bankrupting player {bankrupt_player.id}")
+            target_player.receive_payment(total_money, f"Receiving {total_money} payment for bankrupting player {bankrupt_player.player_id}")
 
             # The oponent receives all the properties too
             for prop in bankrupt_player.properties:
@@ -213,7 +227,7 @@ class Bank:
         player.receive_payment(salary_amount, specifications)
 
     def charge_transaction(self, player: Player, amount_to_charge: int, charging_entity: Player, charge_info: str, 
-        payment_info: str, complete_list_of_players: List[Player], state):
+        payment_info: str, state: RegularMonopolyState):
         """
         The charge transaction is mandatory to the player. It's used when charging rents or taxes (Actions the
         player must fulfill). This is the only ocasion a player can enter bankruptcy. The function has three
@@ -237,8 +251,8 @@ class Bank:
             if not (charging_entity is None):
                 charging_entity.receive_payment(payment, payment_info)
 
-        elif player.is_bankrupt():
-            self.player_on_bankruptcy(player, charging_entity, complete_list_of_players)
+        elif player.is_bankrupt(amount_to_charge):
+            self.player_on_bankruptcy(player, charging_entity, state.playersInGame)
 
         else:
             # Because the player has the obligation to fulfill the impulsive action, he has to find the way
@@ -265,7 +279,7 @@ class Bank:
             self.charge_transaction(player, amount_to_charge, charging_entity, charge_info, payment_info, state)
 
     def improve_property_transaction(self, associated_property_list: List[int], player: Player):
-        (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.id, associated_property_list)
+        (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.player_id, associated_property_list)
         (valid, args) = OPAV._isBuyHouseValid(valid_streets, not_valid_streets, player.money)
 
         if valid:
@@ -277,7 +291,7 @@ class Bank:
         return (valid, args)
 
     def unimprove_property_transaction(self, associated_property_list: List[int], player: Player):
-        (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.id, associated_property_list)
+        (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.player_id, associated_property_list)
         (valid, args) = OPAV._isSellHouseValid(valid_streets, not_valid_streets)
 
         if valid:
@@ -289,7 +303,7 @@ class Bank:
         return (valid, args)
 
     def mortgage_transaction(self, associated_property_list: List[int], player: Player):
-        (valid_properties, not_valid_properties) = self._get_indicated_properties(self.properties, player.id, associated_property_list)
+        (valid_properties, not_valid_properties) = self._get_indicated_properties(self.properties, player.player_id, associated_property_list)
         (valid, args) = OPAV._isMortgagePropertyValid(valid_properties, not_valid_properties)
 
         if valid:
@@ -300,7 +314,7 @@ class Bank:
         return (valid, args)
 
     def free_mortgage_transaction(self, associated_property_list: List[int], player: Player):
-        (valid_properties, not_valid_properties) = self._get_indicated_properties(self.properties, player.id, associated_property_list)
+        (valid_properties, not_valid_properties) = self._get_indicated_properties(self.properties, player.player_id, associated_property_list)
         (valid, args) = OPAV._isFreePropertyFromMortgageValid(valid_properties, not_valid_properties, player.money)
         
         if valid:
@@ -360,7 +374,7 @@ class Bank:
         for i in properties_index:
             # If the owner is the player (Validating ownership)
             if properties[i].owner != None:
-                if properties[i].owner.id == player_id:
+                if properties[i].owner.player_id == player_id:
                     # Add it to the valid list
                     valid_properties.append(properties[i])
                 else: # Else add it to the not valids 
@@ -372,22 +386,22 @@ class Bank:
 
     def transfer_property_owner_to_owner(self, property_to_transfer: BCs.Property, old_owner: Player, new_owner: Player):
         old_owner.remove_property(property_to_transfer)
-        property._change_owner(new_owner)
+        property_to_transfer._change_owner(new_owner)
         new_owner.add_property(property_to_transfer)
 
         if property_to_transfer.type == "street":
-            self.street_transfer_color_set_check(property_to_transfer, new_owner.id)
+            self.street_transfer_color_set_check(property_to_transfer, new_owner.player_id)
         else:
-            self.property_transfer_set_check(property_to_transfer, old_owner.id, new_owner.id)
+            self.property_transfer_set_check(property_to_transfer, old_owner.player_id, new_owner.player_id)
 
     def transfer_property_bank_to_owner(self, property_to_transfer: BCs.Property, new_owner: Player):
         property_to_transfer._change_owner(new_owner)
         new_owner.add_property(property_to_transfer)
 
         if property_to_transfer.type == "street":
-            self.street_transfer_color_set_check(property_to_transfer, new_owner.id)
+            self.street_transfer_color_set_check(property_to_transfer, new_owner.player_id)
         else:
-            self.property_transfer_set_check(property_to_transfer, -1, new_owner.id)
+            self.property_transfer_set_check(property_to_transfer, -1, new_owner.player_id)
 
     def property_transfer_set_check(self, property_transfered: BCs.Property, old_owner_id: int, new_owner_id: int):
         property_idxs = self.property_dic[property_transfered.type]
@@ -396,9 +410,9 @@ class Bank:
 
         for i in property_idxs:
             if self.properties[i].owner != None:
-                if self.properties[i].owner.id == old_owner_id:
+                if self.properties[i].owner.player_id == old_owner_id:
                     belong_to_old_owner.append(i)
-                elif self.properties[i].owner.id == new_owner_id:
+                elif self.properties[i].owner.player_id == new_owner_id:
                     belong_to_new_owner.append(i)
 
         older_owner_new_rent = f"rent_{len(belong_to_old_owner) - 1}"
@@ -421,7 +435,7 @@ class Bank:
             how_many_streets_of_the_color: int = 0
             for i in streets_of_the_color_idxs:
                 if self.properties[i].owner != None:
-                    if self.properties[i].owner.id == new_owner_id:
+                    if self.properties[i].owner.player_id == new_owner_id:
                         how_many_streets_of_the_color += 1
 
             if how_many_streets_of_the_color == len(streets_of_the_color_idxs):

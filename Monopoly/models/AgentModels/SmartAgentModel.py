@@ -1,4 +1,4 @@
-from Monopoly.models.AgentModels.AgentModel import Agent
+from Monopoly.models.AgentModels.BaseAgentModel import Agent
 from typing import List, Tuple
 
 import numpy as np
