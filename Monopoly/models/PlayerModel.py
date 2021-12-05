@@ -14,7 +14,9 @@ class Player:
         self.in_jail = False
         self.out_of_jail_card = False
         self.agent = agent
+        self.agent.id_in_game = player_id
         self.properties = []
+        self.sets_completed = 0
         self.bankrupted = False
     
     #region GAME_ACTIONS
@@ -92,8 +94,9 @@ class Player:
     def actions(self, valid_actions: List[MAs.ActionType], state: MonopolyState) -> List[MAs.ActionStructure]:
         return self.agent.take_decisions(valid_actions, state)
 
-    def inform_decision_quality(self, decisions_to_inform: List[MAs.ActionType], args_list):
-        self.agent.decision_quality(decisions_to_inform, args_list)
+    def inform_decision_quality(self, resulting_state: MonopolyState, decisions_to_inform: List[MAs.ActionType], 
+        args_list):
+        self.agent.decision_quality(resulting_state, decisions_to_inform, args_list)
 
     #endregion ASK_AGENT
 

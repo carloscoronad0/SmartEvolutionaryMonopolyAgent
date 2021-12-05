@@ -4,17 +4,17 @@ from typing import List, Tuple
 import Monopoly.models.BoardComponents as BCs
 
 class ActionType(Enum):
-    MakeTradeOffer = 1
-    ContinueInAuction = 2
-    ImproveProperty = 3
-    SellHouseOrHotel = 4
-    MortgageProperty = 5
-    FreeMortgage = 6
-    ConcludeActions = 7
-    UseGetOutOfJailCard = 8
-    PayJailFine = 9
-    AcceptTradeOffer = 10
-    BuyProperty = 11
+    MakeTradeOffer = 1      # RA -> 0:61
+    ContinueInAuction = 2   # TA -> [1:3]
+    ImproveProperty = 3     # RA -> 61:83
+    SellHouseOrHotel = 4    # RA -> 83:105
+    MortgageProperty = 5    # RA -> 105:133
+    FreeMortgage = 6        # RA -> 133:161
+    ConcludeActions = 7     # RA -> 161
+    UseGetOutOfJailCard = 8 # RA -> 162
+    PayJailFine = 9         # RA -> 163
+    AcceptTradeOffer = 10   # TA -> [0]
+    BuyProperty = 11        # RA -> 164
 
 class ActionInitializationType(Enum):
     InitiatedByPlayer = 1

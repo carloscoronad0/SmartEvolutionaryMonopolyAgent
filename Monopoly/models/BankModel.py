@@ -83,7 +83,7 @@ class Bank:
                         players_who_want_to_continue.append(player)
                     
                     # Inform the player about the quality of their decision
-                    player.inform_decision_quality([MAs.ActionType.ContinueInAuction], [(valid, [args])])
+                    player.inform_decision_quality(state, [MAs.ActionType.ContinueInAuction], [(valid, [args])])
 
             # Update the list of players who will still be part of the auction
             players_in_auction = players_who_want_to_continue
@@ -164,7 +164,7 @@ class Bank:
                 # the player only receives the inform of the action when the response is accept
                 # None arguments are passed because there's no possibilty of the player taking an invalid 
                 # decision.
-                target_player.inform_decision_quality([MAs.ActionType.AcceptTradeOffer], None)
+                target_player.inform_decision_quality(state, [MAs.ActionType.AcceptTradeOffer], None)
 
         return (valid, args)
 
@@ -269,7 +269,7 @@ class Bank:
             # UnImprove transaction with sell decision
             unimprove_quiality = self.unimprove_property_transaction(sell_decision.associatedPropertyList, player)
 
-            player.inform_decision_quality([MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], 
+            player.inform_decision_quality(state, [MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], 
                 [unimprove_quiality, mortgage_quality])
 
             # Update state after the actions
@@ -390,29 +390,29 @@ class Bank:
         new_owner.add_property(property_to_transfer)
 
         if property_to_transfer.type == "street":
-            self.street_transfer_color_set_check(property_to_transfer, new_owner.player_id)
+            self.street_transfer_color_set_check(property_to_transfer, old_owner, new_owner)
         else:
-            self.property_transfer_set_check(property_to_transfer, old_owner.player_id, new_owner.player_id)
+            self.property_transfer_set_check(property_to_transfer, old_owner, new_owner)
 
     def transfer_property_bank_to_owner(self, property_to_transfer: BCs.Property, new_owner: Player):
         property_to_transfer._change_owner(new_owner)
         new_owner.add_property(property_to_transfer)
 
         if property_to_transfer.type == "street":
-            self.street_transfer_color_set_check(property_to_transfer, new_owner.player_id)
+            self.street_transfer_color_set_check(property_to_transfer, None, new_owner)
         else:
-            self.property_transfer_set_check(property_to_transfer, -1, new_owner.player_id)
+            self.property_transfer_set_check(property_to_transfer, None, new_owner)
 
-    def property_transfer_set_check(self, property_transfered: BCs.Property, old_owner_id: int, new_owner_id: int):
+    def property_transfer_set_check(self, property_transfered: BCs.Property, old_owner: Player, new_owner: Player):
         property_idxs = self.property_dic[property_transfered.type]
         belong_to_old_owner: List[int] = []
         belong_to_new_owner: List[int] = []
 
         for i in property_idxs:
             if self.properties[i].owner != None:
-                if self.properties[i].owner.player_id == old_owner_id:
+                if self.properties[i].owner.player_id == old_owner.player_id:
                     belong_to_old_owner.append(i)
-                elif self.properties[i].owner.player_id == new_owner_id:
+                elif self.properties[i].owner.player_id == new_owner.player_id:
                     belong_to_new_owner.append(i)
 
         older_owner_new_rent = f"rent_{len(belong_to_old_owner) - 1}"
@@ -423,7 +423,7 @@ class Bank:
         for m in belong_to_new_owner:
             self.properties[m].rent = self.properties_data[new_owner_new_rent][self.properties[m].index]
 
-    def street_transfer_color_set_check(self, street_transfered: BCs.StreetProperty, new_owner_id: int):
+    def street_transfer_color_set_check(self, street_transfered: BCs.StreetProperty, old_owner: Player, new_owner: Player):
         streets_of_the_color_idxs: List[int] = self.property_dic[street_transfered.street_color]
         
         if street_transfered.set_completed:
@@ -431,16 +431,21 @@ class Bank:
                 self.properties[i].set_completed = False
                 self.properties.rent *= 0.5
 
+            if old_owner != None:
+                old_owner.sets_completed -= 1
+
         else:
             how_many_streets_of_the_color: int = 0
             for i in streets_of_the_color_idxs:
                 if self.properties[i].owner != None:
-                    if self.properties[i].owner.player_id == new_owner_id:
+                    if self.properties[i].owner.player_id == new_owner.player_id:
                         how_many_streets_of_the_color += 1
 
             if how_many_streets_of_the_color == len(streets_of_the_color_idxs):
                 for i in streets_of_the_color_idxs:
                     self.properties[i].set_completed = True
                     self.properties[i].rent *= 2
+
+                new_owner.sets_completed += 1
 
     #endregion AUX_FUNCTIONS

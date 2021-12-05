@@ -41,7 +41,7 @@ class SquareChance(Square):
             player.position = ST_CHARLES_PLACE_INDEX
             squares[ST_CHARLES_PLACE_INDEX].action(self, player, bank, squares, state, dice)
 
-        elif (card == 4) | (card == 5):
+        elif (card == 4) or (card == 5):
             railroad_index = self.get_nearest_index(RAILROAD_INDEXES, player.position)
             player.position = railroad_index
             squares[railroad_index].action(self, player, bank, squares, state, dice)

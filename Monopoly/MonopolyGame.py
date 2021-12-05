@@ -170,7 +170,7 @@ class MonopolyGame:
                 
                 player_action_list = player.actions(valid_decisions_to_take, state)
                 (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
-                player.inform_decision_quality(performed, response_list)
+                player.inform_decision_quality(state, performed, response_list)
 
                 continue_actions = not conclude
                 action_count += 1
@@ -210,7 +210,7 @@ class MonopolyGame:
 
                     player_action_list = player.actions(valid_decisions_to_take, state)
                     (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
-                    player.inform_decision_quality(performed, response_list)
+                    player.inform_decision_quality(state, performed, response_list)
 
                     continue_actions = not conclude
                     action_count += 1
@@ -223,7 +223,7 @@ class MonopolyGame:
             while continue_actions & (action_count < MAX_ACTION_MOVES):
                 player_action_list = p.actions(MAs.OUT_OF_TURN_ACTIONS, state)
                 (conclude, response_list, performed) = self.perform_actions(p, player_action_list)
-                p.inform_decision_quality(performed, response_list)
+                p.inform_decision_quality(state, performed, response_list)
 
                 continue_actions = not conclude
                 action_count += 1
