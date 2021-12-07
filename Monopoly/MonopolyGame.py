@@ -13,6 +13,8 @@ STARTING_MONEY = 1500
 MAX_ACTION_MOVES = 3
 GO_INDEX = 0
 
+MAX_ITERATIONS = 10000
+
 class MonopolyGame:
     def __init__(self, agents: List[Agent]):
         player_number = len(agents)
@@ -140,6 +142,7 @@ class MonopolyGame:
                 return self.bank.buy_property_transaction(self.table.squares[player.position].board_component.property_index, 
                     player)
             else:
+                self.bank.auction(self.players, self.table.squares[player.position].board_component.property_index)
                 return None
 
     def step(self, player: Player, rest_of_players: List[Player]):
@@ -160,7 +163,7 @@ class MonopolyGame:
             continue_actions = True
             action_count = 0
 
-            print("PRE ROLL ------------------------------------")
+            # print("PRE ROLL ------------------------------------")
 
             while continue_actions & (action_count < MAX_ACTION_MOVES):
                 if player.in_jail:
@@ -180,7 +183,7 @@ class MonopolyGame:
 
             # If the dice is double
             if self.dice[0] == self.dice[1]:
-                print("\nDOUBLES\n")
+                # print("\nDOUBLES\n")
                 doubles += 1 # The number adds up
 
                 if doubles == 3: # If the number is already 3
@@ -197,7 +200,7 @@ class MonopolyGame:
                 self.table.squares[new_position].action(player, self.bank, self.table.squares, state, sum(self.dice))
 
             # POST ROLL ACTIONS -------------------------------------------------------
-            print("POST ROLL ------------------------------------")
+            # print("POST ROLL ------------------------------------")
             if (not player.in_jail) & (not player.bankrupted):
                 continue_actions = True
                 action_count = 0
@@ -215,7 +218,7 @@ class MonopolyGame:
                     continue_actions = not conclude
                     action_count += 1
 
-        print("OUT OF TURN ------------------------------------")
+        # print("OUT OF TURN ------------------------------------")
         for p in rest_of_players:
             continue_actions = True
             action_count = 0
@@ -230,11 +233,22 @@ class MonopolyGame:
 
     def monopoly_game(self):
         player_count = 0
+        iteration_count = 0
 
-        while len(self.players) > 1:
+        while (len(self.players) > 1) & (iteration_count < MAX_ITERATIONS):
             rest_of_players = [p for p in self.players if p.player_id != self.players[player_count].player_id]
             self.step(self.players[player_count], rest_of_players)
 
+            iteration_count += 1
             player_count = (player_count + 1) % len(self.players)
 
-        return self.players[0]
+        if len(self.players) > 1:
+            print("Solving by net values")
+            net_values = [pl.net_value() for pl in self.players]
+            idx = np.argmax(net_values)
+            print(f"Players Net values: {net_values}")
+            print(f"Index: {idx}")
+            return self.players[idx]
+        else:
+            print("Complete winner")
+            return self.players[0]

@@ -14,8 +14,6 @@ class DdqnActor:
     def __init__(self, state_size: int, decision_size: int, learning_rate: float, 
                 gamma: float, tau: float, epsilon: float, memory_replay, distinguisher: str,
                 batch_size: int):
-        self.net = EvolvableNN()
-
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.tau = tau
@@ -26,15 +24,13 @@ class DdqnActor:
 
         self.done = False
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         self.regular_net = EvolvableNN(state_size, decision_size, STARTING_HIDDEN_SIZE, 
-                                        STARTING_HIDDEN_ACTIVATION, 'sigmoid').to(self.device)
+                                        STARTING_HIDDEN_ACTIVATION, 'sigmoid')
 
         self.target_net = EvolvableNN(state_size, decision_size, STARTING_HIDDEN_SIZE, 
-                                        STARTING_HIDDEN_ACTIVATION, 'sigmoid').to(self.device)
+                                        STARTING_HIDDEN_ACTIVATION, 'sigmoid')
 
-        for target_param, param in zip(self.model.parameters(), self.target_model.parameters()):
+        for target_param, param in zip(self.regular_net.parameters(), self.target_net.parameters()):
             target_param.data.copy_(param)
 
         self.optimizer = torch.optim.Adam(self.regular_net.parameters())

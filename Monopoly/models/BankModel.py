@@ -32,7 +32,7 @@ class Bank:
         self.property_dic = property_dic
         self.properties_data = properties_data
 
-    def auction(self, initial_players_in_auction: List[Player], property_in_auction: BCs.Property):
+    def auction(self, initial_players_in_auction: List[Player], property_in_auction_index: int):
         """
         The logic behind the auction function is simple, given a property and a list of players the function
         iterates until there's only one player left. In each iteration it asks each player if the want to continue
@@ -40,6 +40,9 @@ class Bank:
 
         To continue in the auction a player must offer a higher bid than the previous one.
         """
+        print("\n ---------------- IN AUCTION ------------------ \n")
+        
+        property_in_auction = self.properties[property_in_auction_index]
         # The initial list passed is copied because the one received as a parameter points to the princial
         # list saved in the MonopolyGame class
         players_in_auction = initial_players_in_auction.copy()
@@ -69,12 +72,11 @@ class Bank:
                 # Ask the player to take the specific auction decision based on the state passed
                 aux = player.actions([MAs.ActionType.ContinueInAuction], state)
                 decision: MAs.AuctionActionStructure = aux.pop(0)
+                # Valdiate the decision parameters
+                (valid, args) = OPAV._isAuctionDecisionValid(decision.moneyOffer, highest_money_offer, player.money)
 
                 # If the player wish to continue 
                 if decision.continueInAuction:
-                    # Valdiate the decision parameters
-                    (valid, args) = OPAV._isAuctionDecisionValid(decision.moneyOffer, highest_money_offer, player.money)
-
                     # If the player's bid is valid
                     if valid:
                         # Store the player's bid
@@ -83,7 +85,7 @@ class Bank:
                         players_who_want_to_continue.append(player)
                     
                     # Inform the player about the quality of their decision
-                    player.inform_decision_quality(state, [MAs.ActionType.ContinueInAuction], [(valid, [args])])
+                player.inform_decision_quality(state, [MAs.ActionType.ContinueInAuction], [(valid, [args])])
 
             # Update the list of players who will still be part of the auction
             players_in_auction = players_who_want_to_continue
@@ -190,7 +192,7 @@ class Bank:
 
             if prop.type == "street":
                 # The only type of property that can have buildings are the streets
-                house_sell_money.append(prop.buildings  (0.5 * prop.house_price))
+                house_sell_money.append(prop.buildings * (0.5 * prop.house_price))
                 # Reseting the buildings bacl to the minimal
                 prop._reset_buildings()
                 # No street set is completed any longer
@@ -206,10 +208,12 @@ class Bank:
 
         # If the target player is None then bankrupt playe owes to the bank
         if target_player is None:
+            print(f"Player in bankruptcy {bankrupt_player.player_id} with bank")
             for prop in bankrupt_player.properties:
                 # Each one of his properties is put in auction
-                self.auction(complete_list_of_players, prop)
+                self.auction(complete_list_of_players, prop.property_index)
         else: # If the target player is not null the the bankrupt player's debt is with an oponent
+            print(f"Player in bankruptcy {bankrupt_player.player_id} with {target_player.player_id}")
             # All the money is transfered to the oponent
             total_money = bankrupt_player.money + sum(house_sell_money)
             target_player.receive_payment(total_money, f"Receiving {total_money} payment for bankrupting player {bankrupt_player.player_id}")
@@ -259,24 +263,30 @@ class Bank:
             # to get money, it has already been validated that the player is not in bankruptcy, so the only 
             # option is for him to sell houses or mortgage properties
 
-            aux = player.actions([MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], state)
-            sell_decision: MAs.PropertyActionStructure = aux[0]
-            mortgage_decision: MAs.PropertyActionStructure = aux[1]
+            oportunties = 0
+            while (not player.enough_money(amount_to_charge)) & (oportunties < 10):
+                aux = player.actions([MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], state)
+                sell_decision: MAs.PropertyActionStructure = aux[0]
+                mortgage_decision: MAs.PropertyActionStructure = aux[1]
 
-            # Mortgage transaction with mortgage decision
-            mortgage_quality = self.mortgage_transaction(mortgage_decision.associatedPropertyList, player)
+                # Mortgage transaction with mortgage decision
+                mortgage_quality = self.mortgage_transaction(mortgage_decision.associatedPropertyList, player)
 
-            # UnImprove transaction with sell decision
-            unimprove_quiality = self.unimprove_property_transaction(sell_decision.associatedPropertyList, player)
+                # UnImprove transaction with sell decision
+                unimprove_quality = self.unimprove_property_transaction(sell_decision.associatedPropertyList, player)
 
-            player.inform_decision_quality(state, [MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], 
-                [unimprove_quiality, mortgage_quality])
+                player.inform_decision_quality(state, [MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], 
+                    [unimprove_quality, mortgage_quality])
 
-            # Update state after the actions
-            
-            # As a suposition, i believe th state updates by itself because of the pointers
+                # Update state after the actions
+                
+                # As a suposition, i believe th state updates by itself because of the pointers
+                oportunties += 1
 
-            self.charge_transaction(player, amount_to_charge, charging_entity, charge_info, payment_info, state)
+            if (oportunties < 10):
+                self.charge_transaction(player, amount_to_charge, charging_entity, charge_info, payment_info, state)
+            else:
+                self.player_on_bankruptcy(player, charging_entity, state.playersInGame)
 
     def improve_property_transaction(self, associated_property_list: List[int], player: Player):
         (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.player_id, associated_property_list)
@@ -410,8 +420,9 @@ class Bank:
 
         for i in property_idxs:
             if self.properties[i].owner != None:
-                if self.properties[i].owner.player_id == old_owner.player_id:
-                    belong_to_old_owner.append(i)
+                if old_owner != None:
+                    if self.properties[i].owner.player_id == old_owner.player_id:
+                        belong_to_old_owner.append(i)
                 elif self.properties[i].owner.player_id == new_owner.player_id:
                     belong_to_new_owner.append(i)
 
@@ -429,7 +440,7 @@ class Bank:
         if street_transfered.set_completed:
             for i in streets_of_the_color_idxs:
                 self.properties[i].set_completed = False
-                self.properties.rent *= 0.5
+                self.properties[i].rent *= 0.5
 
             if old_owner != None:
                 old_owner.sets_completed -= 1

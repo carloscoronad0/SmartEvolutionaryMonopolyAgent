@@ -25,31 +25,31 @@ class SquareChance(Square):
 
         if card == 0:
             player.position = BROADWALK_INDEX
-            squares[BROADWALK_INDEX].action(self, player, bank, squares, state, dice)
+            squares[BROADWALK_INDEX].action(player, bank, squares, state, dice)
 
         elif card == 1:
             player.position = GO_INDEX
-            squares[GO_INDEX].action(self, player, bank, squares, state, dice)
+            squares[GO_INDEX].action(player, bank, squares, state, dice)
             
         elif card == 2:
             self.must_pay_go(player, ILLINOIS_AVENUE_INDEX, bank)
             player.position = ILLINOIS_AVENUE_INDEX
-            squares[ILLINOIS_AVENUE_INDEX].action(self, player, bank, squares, state, dice)
+            squares[ILLINOIS_AVENUE_INDEX].action(player, bank, squares, state, dice)
 
         elif card == 3:
             self.must_pay_go(player, ST_CHARLES_PLACE_INDEX, bank)
             player.position = ST_CHARLES_PLACE_INDEX
-            squares[ST_CHARLES_PLACE_INDEX].action(self, player, bank, squares, state, dice)
+            squares[ST_CHARLES_PLACE_INDEX].action(player, bank, squares, state, dice)
 
         elif (card == 4) or (card == 5):
             railroad_index = self.get_nearest_index(RAILROAD_INDEXES, player.position)
             player.position = railroad_index
-            squares[railroad_index].action(self, player, bank, squares, state, dice)
+            squares[railroad_index].action(player, bank, squares, state, dice)
 
         elif card == 6:
             utility_index = self.get_nearest_index(UTILITY_INDEXES, player.position)
             player.position = utility_index
-            squares[utility_index].action(self, player, bank, squares, state, dice)
+            squares[utility_index].action(player, bank, squares, state, dice)
 
         elif card == 7:
             bank.salary_transaction(player, 50, BCs.CHANCE_CARDS[card])
@@ -61,7 +61,7 @@ class SquareChance(Square):
             player.advance_on_table(37, 40)
 
         elif card == 10:
-            squares[JAIL_INDEX].action(self, player, bank, squares, state, dice)
+            squares[JAIL_INDEX].action(player, bank, squares, state, dice)
 
         elif card == 11:
             amount = self.general_repairs(player)
@@ -73,7 +73,7 @@ class SquareChance(Square):
         elif card == 13:
             self.must_pay_go(player, READING_RAILROAD, bank)
             player.position = READING_RAILROAD
-            squares[READING_RAILROAD].action(player, state.playersInGame, bank, squares, dice)
+            squares[READING_RAILROAD].action(player, bank, squares, state, dice)
 
         elif card == 14:
             for p in state.playersInGame:

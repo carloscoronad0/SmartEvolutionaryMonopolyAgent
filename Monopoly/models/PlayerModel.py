@@ -73,6 +73,18 @@ class Player:
     def enough_money(self, amount: int) -> bool:
         return self.money >= amount
 
+    def net_value(self) -> int:
+        property_money: int = 0
+
+        for prop in self.properties:
+            property_money += prop.cost
+
+            if prop.type == "street":
+                property_money += round(prop.buildings * prop.house_price)
+        
+        total_net_value = self.money + property_money
+        return total_net_value
+
     def is_bankrupt(self, amount: int) -> bool:
         property_money: int = 0
 
@@ -80,7 +92,7 @@ class Player:
             property_money += prop.mortgage
 
             if prop.type == "street":
-                property_money += round(prop.buildings * 0.5)
+                property_money += round(prop.buildings * prop.house_price * 0.5)
         
         total_net_value = self.money + property_money
 
