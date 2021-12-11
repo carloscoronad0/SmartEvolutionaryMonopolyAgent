@@ -28,18 +28,17 @@ MIN_BATCH_SIZE = 16
 BATCH_STEP = 8
 
 class Mutation:
-    def __init__(self, replay_memory_sample):
-        self.replay_memory_sample = replay_memory_sample
+    def __init__(self):
         self.rng = np.random.RandomState()
     
     # NO MUTATION ------------------------------------------------------------------------
-    def no_mutation(self, actor: DdqnActor, log) -> DdqnActor:
-        log["mutation"] = "no_mutation"
+    def no_mutation(self, actor: DdqnActor) -> DdqnActor:
+        print("No mutation")
         return actor
     # ------------------------------------------------------------------------------------
 
     # PARAMETER MUTATION -----------------------------------------------------------------
-    def parameter_mutation(self, actor: DdqnActor, log) -> DdqnActor:
+    def weight_mutation(self, actor: DdqnActor) -> DdqnActor:
         network = actor.regular_net
         mut_strength = PARAMETER_MUTATION_SEED
         num_mutation_frac = 0.1
@@ -79,8 +78,9 @@ class Mutation:
 
                 # Regularization hard limit
                 W[ind_dim1, ind_dim2] = self.regularize_weight(W[ind_dim1, ind_dim2], 1000000)
+
+        print("Weight mutation")
         
-        log["mutation"] = "parameter_mutation"
         return actor
 
     def regularize_weight(self, weight, mag):
@@ -91,11 +91,12 @@ class Mutation:
     # ------------------------------------------------------------------------------------
 
     # ACTIVATION FUNCTION MUTATION -------------------------------------------------------
-    def activation_mutation(self, actor: DdqnActor, log) -> DdqnActor:
+    def activation_mutation(self, actor: DdqnActor) -> DdqnActor:
         actor.regular_net = self._permutate_activation(actor.regular_net)
         actor.target_net = self._permutate_activation(actor.target_net)
 
-        log["mutation"] = "activation"
+        print("Activation mutation")
+
         return actor
 
     def _permutate_activation(self, network):
@@ -115,22 +116,23 @@ class Mutation:
     # ------------------------------------------------------------------------------------
 
     # ARCHITECTURE MUTATION --------------------------------------------------------------
-    def architecture_mutate(self, actor: DdqnActor, log):
+    def architecture_mutate(self, actor: DdqnActor):
 
         offspring_regular = actor.regular_net.clone()
         offspring_target = actor.target_net.clone()
 
         rand_numb = self.rng.uniform(0, 1)
-        if rand_numb < self.cfg.mutation.new_layer_prob:
+        if rand_numb < 0.5:
             offspring_regular.add_layer()
             offspring_target.add_layer()
 
-            log["mutation"] = "architecture_new_layer"
+            print("New layer mutation")
+
         else:
             node_dict = offspring_regular.add_node()
             offspring_target.add_node(**node_dict)
 
-            log["mutation"] = "architecture_new_node"
+            print("New node mutation")
 
         actor.regular_net = offspring_regular
         actor.target_net = offspring_target
@@ -140,7 +142,7 @@ class Mutation:
     # ------------------------------------------------------------------------------------
 
     # HYPER-PARAMETER MUTATION -----------------------------------------------------------
-    def rl_hyperparam_mutation(self, actor: DdqnActor, log) -> DdqnActor:
+    def rl_hyperparam_mutation(self, actor: DdqnActor) -> DdqnActor:
 
         mutate_param = self.rng.choice(HYPPARAM_MUTATION, 1)[0]
 
@@ -152,10 +154,9 @@ class Mutation:
             self.mutate_hypp(actor.tau, MAX_TAU, MIN_TAU, TAU_STEP)
         elif mutate_param == "epsilon":
             self.mutate_hypp(actor.epsilon, MAX_EPSILON, MIN_EPSILON, EPSILON_STEP)
-        elif mutate_param == 'batch':
-            self.mutate_hypp(actor.batch_size, MAX_BATCH_SIZE, MIN_BATCH_SIZE, BATCH_STEP)
 
-        log["mutation"] = f"rl_{mutate_param}"
+        print(f"{mutate_param} mutation")
+
         return actor
 
     def mutate_hypp(self, parameter: int, max_value: int, min_value: int, step: int):
