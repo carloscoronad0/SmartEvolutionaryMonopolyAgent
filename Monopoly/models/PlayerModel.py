@@ -39,8 +39,8 @@ class Player:
         """
         # Reduces the player's money amount by the received parameter
         self.money -= amount_to_pay
-        print(f"On player {self.player_id}")
-        print(transaction_details)
+        # print(f"On player {self.player_id}")
+        # print(transaction_details)
         return amount_to_pay
 
     def receive_payment(self, amount_received: int, payment_details: str = ""):

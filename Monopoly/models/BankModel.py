@@ -208,12 +208,12 @@ class Bank:
 
         # If the target player is None then bankrupt playe owes to the bank
         if target_player is None:
-            print(f"Player in bankruptcy {bankrupt_player.player_id} with bank")
+            print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with bank\n")
             for prop in bankrupt_player.properties:
                 # Each one of his properties is put in auction
                 self.auction(complete_list_of_players, prop.property_index)
         else: # If the target player is not null the the bankrupt player's debt is with an oponent
-            print(f"Player in bankruptcy {bankrupt_player.player_id} with {target_player.player_id}")
+            print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with {target_player.player_id}\n")
             # All the money is transfered to the oponent
             total_money = bankrupt_player.money + sum(house_sell_money)
             target_player.receive_payment(total_money, f"Receiving {total_money} payment for bankrupting player {bankrupt_player.player_id}")

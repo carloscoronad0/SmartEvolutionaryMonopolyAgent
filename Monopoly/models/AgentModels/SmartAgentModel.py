@@ -30,8 +30,9 @@ class SmartAgent(Agent):
 
         self.regular_replay_memory = regular_memory_replay
         self.trading_replay_memory = trading_memory_replay
+        
 
-        self.regular_actor = DdqnActor(REGULAR_INPUT_NUM, REGULAR_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, regular_memory_replay, "regular", 64)
+        self.regular_actor = DdqnActor(REGULAR_INPUT_NUM, REGULAR_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, regular_memory_replay, "regular", 128)
         self.trading_actor = DdqnActor(TRADING_INPUT_NUM, TRADING_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, trading_memory_replay, "trading", 64)
 
         self.id_in_game = -1
