@@ -14,14 +14,14 @@ MIN_HIDDEN_LAYERS = 1
 MAX_HIDDEN_LAYERS = 5
 
 class EvolvableNN(nn.Module):
-    def __init__(self, num_inputs: int, num_outputs: int, hidden_size: List[int], hidden_activation: List[str], 
+    def __init__(self, num_inputs: int, num_outputs: int, hidden_size: List[int], activation: str, 
                 output_activation=None, stored_values=None):
         super(EvolvableNN, self).__init__()
 
         self.num_inputs = num_inputs
 
         self.hidden_size = hidden_size
-        self.hidden_activation = hidden_activation
+        self.activation = activation
 
         self.num_outputs = num_outputs
         self.output_activation = output_activation
@@ -42,12 +42,12 @@ class EvolvableNN(nn.Module):
         net_dict = OrderedDict()
 
         net_dict["linear_layer_0"] = nn.Linear(self.num_inputs, self.hidden_size[0])
-        net_dict["activation_0"] = self.get_activation(self.hidden_activation[0])
+        net_dict["activation_0"] = self.get_activation(self.activation)
 
         if len(self.hidden_size) > 1:
             for l_no in range(1, len(self.hidden_size)):
                 net_dict[f"linear_layer_{str(l_no)}"] = nn.Linear(self.hidden_size[l_no - 1], self.hidden_size[l_no])
-                net_dict[f"activation_{str(l_no)}"] = self.get_activation(self.hidden_activation[l_no])
+                net_dict[f"activation_{str(l_no)}"] = self.get_activation(self.activation)
 
         output_layer = nn.Linear(self.hidden_size[-1], self.num_outputs)
 
@@ -117,7 +117,6 @@ class EvolvableNN(nn.Module):
         # add layer to hyper params
         if len(self.hidden_size) < MAX_HIDDEN_LAYERS:  # HARD LIMIT
             self.hidden_size += [self.hidden_size[-1]]
-            self.hidden_activation += ['relu']
             # copy old params to new net
             new_net = self.create_net()
             new_net = self.preserve_parameters(old_net=self.net, new_net=new_net)
@@ -128,7 +127,6 @@ class EvolvableNN(nn.Module):
         if hidden_lenght > MIN_HIDDEN_LAYERS:  # HARD LIMIT
             new_lenght = hidden_lenght - 1
             self.hidden_size = self.hidden_size[:new_lenght]
-            self.hidden_activation = self.hidden_activation[:new_lenght]
             new_net = self.create_net()
             new_net = self.shrink_preserve_parameters(old_net=self.net, new_net=new_net)
             self.net = new_net
@@ -227,12 +225,12 @@ class EvolvableNN(nn.Module):
     def init_dict(self):
 
         init_dict = {"num_inputs": self.num_inputs, "num_outputs": self.num_outputs, "hidden_size": self.hidden_size,
-                     "hidden_activation": self.hidden_activation, "output_activation": self.output_activation}
+                     "activation": self.activation, "output_activation": self.output_activation}
         return init_dict
 
     @property
     def short_dict(self):
 
-        short_dict = {"hidden_size": self.hidden_size, "hidden_activation": self.hidden_activation, 
+        short_dict = {"hidden_size": self.hidden_size, "activation": self.activation, 
                     "output_activation": self.output_activation}
         return short_dict

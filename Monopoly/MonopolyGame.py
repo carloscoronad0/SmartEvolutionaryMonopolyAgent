@@ -17,6 +17,9 @@ MAX_ITERATIONS = 10000
 
 class MonopolyGame:
     def __init__(self, agents: List[Agent]):
+        print("Agents in game: ")
+        print([ag.agent_id for ag in agents])
+
         player_number = len(agents)
         self.dice = [1, 1]
         self.jail_fine = 50
@@ -178,6 +181,21 @@ class MonopolyGame:
                 continue_actions = not conclude
                 action_count += 1
 
+            # print("OUT OF TURN ------------------------------------")
+            for p in rest_of_players:
+                continue_actions = True
+                action_count = 0
+
+                while continue_actions & (action_count < MAX_ACTION_MOVES):
+                    player_action_list = p.actions(MAs.OUT_OF_TURN_ACTIONS, state)
+                    (conclude, response_list, performed) = self.perform_actions(p, player_action_list)
+                    p.inform_decision_quality(state, performed, response_list)
+
+                    continue_actions = not conclude
+                    action_count += 1
+
+            # print("ROLLING ----------------------------------------")
+
             # Roll dice
             self.roll_dice()
 
@@ -217,19 +235,8 @@ class MonopolyGame:
 
                     continue_actions = not conclude
                     action_count += 1
-
-        # print("OUT OF TURN ------------------------------------")
-        for p in rest_of_players:
-            continue_actions = True
-            action_count = 0
-
-            while continue_actions & (action_count < MAX_ACTION_MOVES):
-                player_action_list = p.actions(MAs.OUT_OF_TURN_ACTIONS, state)
-                (conclude, response_list, performed) = self.perform_actions(p, player_action_list)
-                p.inform_decision_quality(state, performed, response_list)
-
-                continue_actions = not conclude
-                action_count += 1
+            else:
+                continue_turn = False
 
     def monopoly_game(self):
         player_count = 0

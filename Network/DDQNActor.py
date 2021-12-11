@@ -6,23 +6,22 @@ import numpy as np
 import random
 
 STARTING_HIDDEN_SIZE = [64, 64]
-STARTING_HIDDEN_ACTIVATION = ['relu', 'relu']
+STARTING_HIDDEN_ACTIVATION = 'relu'
 
 PERCENTAJE_TO_SAVE = 0.5
 
 class DdqnActor:
     def __init__(self, state_size: int, decision_size: int, learning_rate: float, 
-                gamma: float, tau: float, epsilon: float, memory_replay, distinguisher: str,
-                batch_size: int):
+                gamma: float, tau: float, epsilon: float, memory_replay, distinguisher: str):
+
+        self.state_size = state_size
+        self.decision_size = decision_size
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.tau = tau
         self.epsilon = epsilon
-        
-        self.batch_size = batch_size
         self.memory_replay = memory_replay
-
-        self.done = False
+        self.distinguisher = distinguisher
 
         self.regular_net = EvolvableNN(state_size, decision_size, STARTING_HIDDEN_SIZE, 
                                         STARTING_HIDDEN_ACTIVATION, 'sigmoid')
@@ -35,7 +34,21 @@ class DdqnActor:
 
         self.optimizer = torch.optim.Adam(self.regular_net.parameters())
 
-        self.distinguisher = distinguisher
+    def clone(self):
+        clone = type(self)(state_size = self.state_size,
+                        decision_size = self.decision_size,
+                        learning_rate = self.learning_rate,
+                        gamma = self.gamma,
+                        tau = self.tau,
+                        epsilon = self.epsilon,
+                        memory_replay = self.memory_replay,
+                        distinguisher = self.distinguisher)
+
+        clone.regular_net = self.regular_net.clone()
+        clone.target_net = self.target_net.clone()
+        clone.optimizer = torch.optim.Adam(clone.regular_net.parameters())
+
+        return clone
 
     def get_action(self, state: np.ndarray) -> np.ndarray:
         state = torch.FloatTensor(state)
@@ -65,8 +78,9 @@ class DdqnActor:
         
         return loss
 
-    def train(self):
-        batch = self.memory_replay.sample(self.batch_size)
+    def train(self, batch_percentage):
+        batch_size = round(self.memory_replay.push_count * batch_percentage)
+        batch = self.memory_replay.sample(batch_size)
         self.optimizer.zero_grad()
 
         for experience in batch:
