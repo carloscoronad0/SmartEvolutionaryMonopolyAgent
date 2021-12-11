@@ -26,24 +26,21 @@ STREETS_COLORS = ["purple", "lightblue", "violet", "orange", "red", "yellow", "d
 
 class SmartAgent(Agent):
     def __init__(self, agent_id: int, regular_memory_replay, trading_memory_replay):
-        super().__init__(agent_id, 0, "smart")
+        super().__init__(agent_id, "smart")
 
         self.regular_replay_memory = regular_memory_replay
         self.trading_replay_memory = trading_memory_replay
-        
 
-        self.regular_actor = DdqnActor(REGULAR_INPUT_NUM, REGULAR_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, regular_memory_replay, "regular", 128)
-        self.trading_actor = DdqnActor(TRADING_INPUT_NUM, TRADING_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, trading_memory_replay, "trading", 64)
-
-        self.id_in_game = -1
+        self.regular_actor = DdqnActor(REGULAR_INPUT_NUM, REGULAR_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, regular_memory_replay, "regular")
+        self.trading_actor = DdqnActor(TRADING_INPUT_NUM, TRADING_OUTPUT_NUM, 0.003, 0.80, 0.02, 0.5, trading_memory_replay, "trading")
 
         self.order_dic = None
-        self.last_action_initialization = None
         self.last_state = None
         self.last_decision = None
 
     def take_decisions(self, valid_decisions_to_take: List[MAs.ActionType], state: MSs.MonopolyState) -> List[MAs.ActionStructure]:
 
+        self.last_action_initialization = state.stateType
         if state.stateType == MAs.ActionInitializationType.InitiatedByOtherEntity:
             return self.take_trading_decisions(state, valid_decisions_to_take)
         elif state.stateType == MAs.ActionInitializationType.InitiatedByPlayer:
@@ -63,11 +60,28 @@ class SmartAgent(Agent):
             reward = self.reward_function(p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny)
             self.regular_replay_memory.push(self.last_state, self.last_decision, reward, next_state)
 
+        self.rewards_in_game += reward
         self.order_dic = None
         self.last_action_initialization = None
         self.last_state = None
         self.last_decision = None
 
+    def clone(self, ag_id):
+        clone = type(self)(agent_id = ag_id,
+                            regular_memory_replay = self.regular_replay_memory,
+                            trading_memory_replay = self.trading_replay_memory)
+
+        clone.agent_id = ag_id
+        clone.agent_type = "smart"
+        clone.last_action_initialization = None
+        clone.id_in_game = -1
+        clone.rewards_in_game = 0
+        clone.reward_count = 0
+        clone.regular_actor = self.regular_actor.clone()
+        clone.trading_actor = self.trading_actor.clone()
+
+        return clone
+        
     #region ACTIONS_INITIATED_BY_PLAYER
 
     def make_trade_offer(self, trade_binary_representation: np.ndarray) -> MAs.TradeActionStructure:
@@ -212,75 +226,6 @@ class SmartAgent(Agent):
     def _transform_money(baseline_money: float, percentage: float) -> int:
         return int(percentage * baseline_money)
 
-    def get_reward_parameters_from_trade(self, state: MSs.OfferActionMonopolyState):
-        player_property_number = 0
-        mean_op_property = 0
-        num_color_completed = 0
-        house_build = 0
-        player_money = 0
-        mean_op_money = 0
-
-        if state.initialPlayer != None:
-            mean_op_property = len(state.initialPlayer.properties)
-            mean_op_money = state.initialPlayer.money
-
-        if state.targetPlayer != None:
-            player_property_number = len(state.targetPlayer.properties)
-            player_money = state.targetPlayer.money
-            num_color_completed = state.targetPlayer.sets_completed
-
-            for prop in state.targetPlayer.properties:
-                if prop.type == "street":
-                    house_build += prop.buildings
-
-        return (player_property_number, mean_op_property, num_color_completed, house_build, player_money, mean_op_money)
-
-    def get_reward_parameters_from_regular(self, state: MSs.RegularMonopolyState):
-        player_property_number = 0
-        mean_op_property = 0
-        num_color_completed = 0
-        house_build = 0
-        player_money = 0
-        mean_op_money = 0
-
-        oponents_money = []
-        oponents_prop_num = []
-
-        for pl in state.playersInGame:
-            if pl.player_id == self.id_in_game:
-                player_property_number = len(pl.properties)
-                num_color_completed = pl.sets_completed
-                player_money = pl.money
-
-                for plprop in pl.properties:
-                    if plprop.type == "street":
-                        house_build += plprop.buildings
-            else:
-                oponents_money.append(pl.money)
-                oponents_prop_num.append(len(pl.properties))
-
-        if len(oponents_money) > 0:
-            mean_op_property = sum(oponents_prop_num) / len(oponents_prop_num)
-            mean_op_money = sum(oponents_money) / len(oponents_money)
-
-        return (player_property_number, mean_op_property, num_color_completed, house_build, player_money, mean_op_money)
-
-    # To calculate an actions reward
-    def reward_function(self, player_property_number: int, mean_op_property: int, num_color_completed: int, 
-        house_build: int, player_money: int, mean_op_money: int):
-
-        if num_color_completed >= 1:
-            asset_factor = (player_property_number - mean_op_property) + (house_build / (5 * num_color_completed))
-        else:
-            asset_factor = player_property_number - mean_op_property
-
-        finance_factor = player_money - mean_op_money
-
-        xvalue = asset_factor + finance_factor
-        res: float = xvalue / (1 + abs(xvalue))
-
-        return res
-
     # To return the regular state adapted to a numeric form (state space) for the neural network
     def form_regular_state(self, state: MSs.RegularMonopolyState) -> np.ndarray:
         total_info = []
@@ -351,7 +296,6 @@ class SmartAgent(Agent):
 
         self.last_state = np.copy(total_info)
         self.order_dic = player_order
-        self.last_action_initialization = MAs.ActionInitializationType.InitiatedByPlayer
 
         return total_info
 
@@ -363,8 +307,13 @@ class SmartAgent(Agent):
         # --------------------------------------------------------------------
 
         # Money Trade Info ---------------------------------------------------
-        adapted_money_offer = state.moneyOffer / state.targetPlayer.money
-        adapted_money_asked = state.moneyAsked / state.targetPlayer.money
+        if state.targetPlayer.money > 0:
+            metric = state.targetPlayer.money
+        else:
+            metric = 1
+
+        adapted_money_offer = state.moneyOffer / metric
+        adapted_money_asked = state.moneyAsked / metric
         # --------------------------------------------------------------------
 
         # Players Properties Info --------------------------------------------
@@ -392,7 +341,6 @@ class SmartAgent(Agent):
 
         total_info = np.array(total_info)
 
-        self.last_action_initialization = MAs.ActionInitializationType.InitiatedByOtherEntity
         self.last_state = np.copy(total_info)
 
         return total_info

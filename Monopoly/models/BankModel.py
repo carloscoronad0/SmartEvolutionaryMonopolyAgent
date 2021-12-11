@@ -40,7 +40,7 @@ class Bank:
 
         To continue in the auction a player must offer a higher bid than the previous one.
         """
-        print("\n ---------------- IN AUCTION ------------------ \n")
+        # print("\n ---------------- IN AUCTION ------------------ ")
         
         property_in_auction = self.properties[property_in_auction_index]
         # The initial list passed is copied because the one received as a parameter points to the princial
@@ -96,6 +96,8 @@ class Bank:
 
         # Transfer the property
         self.transfer_property_bank_to_owner(property_in_auction, highest_bid_player)
+
+        # print(" ---------------- AUCTION FINISHED ------------------ \n")
         
     def trade_assets(self, property_offer_index: List[int], property_asked_index: List[int], money_offer: int, 
         money_asked: int, initial_player: Player, target_player: Player):
@@ -204,16 +206,17 @@ class Bank:
         # Removing the bankrupt player ----------------------------------------------------
         # In this case it's not necessary to make a copy because the player has to be removed from the group 
         # that continues active in the game
+        # print(f"Removing player {bankrupt_player.player_id}")
         complete_list_of_players.remove(bankrupt_player)
 
         # If the target player is None then bankrupt playe owes to the bank
         if target_player is None:
-            print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with bank\n")
+            # print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with bank\n")
             for prop in bankrupt_player.properties:
                 # Each one of his properties is put in auction
                 self.auction(complete_list_of_players, prop.property_index)
         else: # If the target player is not null the the bankrupt player's debt is with an oponent
-            print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with {target_player.player_id}\n")
+            # print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with {target_player.player_id}\n")
             # All the money is transfered to the oponent
             total_money = bankrupt_player.money + sum(house_sell_money)
             target_player.receive_payment(total_money, f"Receiving {total_money} payment for bankrupting player {bankrupt_player.player_id}")

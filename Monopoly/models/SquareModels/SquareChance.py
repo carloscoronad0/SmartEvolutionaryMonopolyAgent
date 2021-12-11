@@ -76,8 +76,10 @@ class SquareChance(Square):
             squares[READING_RAILROAD].action(player, bank, squares, state, dice)
 
         elif card == 14:
-            for p in state.playersInGame:
-                bank.charge_transaction(player, 50, p, BCs.CHANCE_CARDS[card], "", state)
+            bank.charge_transaction(player, 50 * (len(state.playersInGame) - 1), None, BCs.CHANCE_CARDS[card], "", state)
+            rest_of_players = [p for p in state.playersInGame if p.player_id != player.player_id]
+            for p in rest_of_players:
+                bank.salary_transaction(p, 50, "Receving 50 because of chance card")
 
         elif card == 15:
             bank.salary_transaction(player, 150, BCs.CHANCE_CARDS[card])

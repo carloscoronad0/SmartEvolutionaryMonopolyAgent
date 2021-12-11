@@ -16,9 +16,7 @@ MONEY_BALANCE = 200
 
 class FixedAgent(Agent):
     def __init__(self, agent_id: int, prioritize_list: List[str], avoid_list: List[str]):
-        super().__init__(agent_id, 0, "fixed")
-        self.step_counter = 0
-        self.id_in_game = -1
+        super().__init__(agent_id, "fixed")
         self.must_sell = False
         self.prioritize = prioritize_list
         self.avoid = avoid_list
@@ -37,11 +35,29 @@ class FixedAgent(Agent):
                 decisions.append(res)
 
         self.must_sell = False
+        self.last_action_initialization = state.stateType
 
         return decisions
     
     def decision_quality(self, resulting_state, decisions_to_inform, args_list):
-        pass
+        if self.last_action_initialization == MAs.ActionInitializationType.InitiatedByOtherEntity:
+            (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_trade(resulting_state)
+        else:
+            (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_regular(resulting_state)
+
+        reward = self.reward_function(p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny)
+        self.rewards_in_game += reward
+        self.last_action_initialization = None
+
+    def clone(self, ag_id):
+        clone = type(self)(agent_id = ag_id,
+                            prioritize_list = self.prioritize,
+                            avoid_list = self.avoid)
+        clone.agent_id = ag_id
+        clone.agent_type = "fixed"
+        clone.must_sell = False
+
+        return clone
 
     def take_decision(self, desicion_to_take: MAs.ActionType, state) -> MAs.ActionStructure:
         if desicion_to_take == MAs.ActionType.MakeTradeOffer:
