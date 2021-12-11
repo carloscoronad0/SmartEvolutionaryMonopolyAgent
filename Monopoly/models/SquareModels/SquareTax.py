@@ -11,6 +11,6 @@ class TaxSquare(Square):
     def action(self, player: Player, bank: Bank, squares, state: RegularMonopolyState, dice):
         tax = self.board_component.tax
         name = self.board_component.name
-        bank.charge_transaction(player, self.board_component.rent, self.board_component.owner, 
-            f"Paying to {self.board_component.owner.player_id} the amount {tax} after falling in {name}",
+        bank.charge_transaction(player, self.board_component.tax, None, 
+            f"Paying to the bank the amount {tax} after falling in {name}",
             f"Receiving {tax} from {player.player_id} for falling in {name}", state)

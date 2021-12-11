@@ -18,7 +18,7 @@ class SquareCommunity(Square):
 
         if card == 0:
             player.position = GO_INDEX
-            squares[GO_INDEX].action(self, player, bank, squares, state, dice)
+            squares[GO_INDEX].action(player, bank, squares, state, dice)
 
         elif card == 1:
             bank.salary_transaction(player, 200, BCs.COMMUNITY_CHEST_CARDS[card])
@@ -33,7 +33,7 @@ class SquareCommunity(Square):
             player.out_of_jail_card = True
 
         elif card == 5:
-            squares[JAIL_INDEX].action(self, player, bank, squares, state, dice)
+            squares[JAIL_INDEX].action(player, bank, squares, state, dice)
 
         elif card == 6:
             bank.salary_transaction(player, 100, BCs.COMMUNITY_CHEST_CARDS[card])

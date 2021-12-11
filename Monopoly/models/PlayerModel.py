@@ -14,7 +14,9 @@ class Player:
         self.in_jail = False
         self.out_of_jail_card = False
         self.agent = agent
+        self.agent.id_in_game = player_id
         self.properties = []
+        self.sets_completed = 0
         self.bankrupted = False
     
     #region GAME_ACTIONS
@@ -37,8 +39,8 @@ class Player:
         """
         # Reduces the player's money amount by the received parameter
         self.money -= amount_to_pay
-        print(f"On player {self.player_id}")
-        print(transaction_details)
+        # print(f"On player {self.player_id}")
+        # print(transaction_details)
         return amount_to_pay
 
     def receive_payment(self, amount_received: int, payment_details: str = ""):
@@ -71,6 +73,18 @@ class Player:
     def enough_money(self, amount: int) -> bool:
         return self.money >= amount
 
+    def net_value(self) -> int:
+        property_money: int = 0
+
+        for prop in self.properties:
+            property_money += prop.cost
+
+            if prop.type == "street":
+                property_money += round(prop.buildings * prop.house_price)
+        
+        total_net_value = self.money + property_money
+        return total_net_value
+
     def is_bankrupt(self, amount: int) -> bool:
         property_money: int = 0
 
@@ -78,7 +92,7 @@ class Player:
             property_money += prop.mortgage
 
             if prop.type == "street":
-                property_money += round(prop.buildings * 0.5)
+                property_money += round(prop.buildings * prop.house_price * 0.5)
         
         total_net_value = self.money + property_money
 
@@ -92,8 +106,9 @@ class Player:
     def actions(self, valid_actions: List[MAs.ActionType], state: MonopolyState) -> List[MAs.ActionStructure]:
         return self.agent.take_decisions(valid_actions, state)
 
-    def inform_decision_quality(self, decisions_to_inform: List[MAs.ActionType], args_list):
-        self.agent.decision_quality(decisions_to_inform, args_list)
+    def inform_decision_quality(self, resulting_state: MonopolyState, decisions_to_inform: List[MAs.ActionType], 
+        args_list):
+        self.agent.decision_quality(resulting_state, decisions_to_inform, args_list)
 
     #endregion ASK_AGENT
 

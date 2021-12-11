@@ -9,7 +9,9 @@ import Monopoly.models.MonopolyStates as MSs
 
 class UserAgent(Agent):
     def __init__(self, agent_id: int):
-        self.agent_id = agent_id
+        super().__init__(agent_id, 0, "user")
+
+        self.id_in_game = -1
 
     def take_decisions(self, valid_decisions_to_take: List[MAs.ActionType], state: MSs.MonopolyState) -> List[MAs.ActionStructure]:
 
@@ -27,7 +29,8 @@ class UserAgent(Agent):
 
         return decisions
 
-    def decision_quality(self, decisions_to_inform: List[MAs.ActionType], args_list):
+    def decision_quality(self, resulting_state: MSs.MonopolyState, decisions_to_inform: List[MAs.ActionType], 
+        args_list):
         for i in range(len(decisions_to_inform)):
             print("--------------------")
             print(decisions_to_inform[i])

@@ -32,7 +32,7 @@ class Bank:
         self.property_dic = property_dic
         self.properties_data = properties_data
 
-    def auction(self, initial_players_in_auction: List[Player], property_in_auction: BCs.Property):
+    def auction(self, initial_players_in_auction: List[Player], property_in_auction_index: int):
         """
         The logic behind the auction function is simple, given a property and a list of players the function
         iterates until there's only one player left. In each iteration it asks each player if the want to continue
@@ -40,6 +40,9 @@ class Bank:
 
         To continue in the auction a player must offer a higher bid than the previous one.
         """
+        print("\n ---------------- IN AUCTION ------------------ \n")
+        
+        property_in_auction = self.properties[property_in_auction_index]
         # The initial list passed is copied because the one received as a parameter points to the princial
         # list saved in the MonopolyGame class
         players_in_auction = initial_players_in_auction.copy()
@@ -69,12 +72,11 @@ class Bank:
                 # Ask the player to take the specific auction decision based on the state passed
                 aux = player.actions([MAs.ActionType.ContinueInAuction], state)
                 decision: MAs.AuctionActionStructure = aux.pop(0)
+                # Valdiate the decision parameters
+                (valid, args) = OPAV._isAuctionDecisionValid(decision.moneyOffer, highest_money_offer, player.money)
 
                 # If the player wish to continue 
                 if decision.continueInAuction:
-                    # Valdiate the decision parameters
-                    (valid, args) = OPAV._isAuctionDecisionValid(decision.moneyOffer, highest_money_offer, player.money)
-
                     # If the player's bid is valid
                     if valid:
                         # Store the player's bid
@@ -83,7 +85,7 @@ class Bank:
                         players_who_want_to_continue.append(player)
                     
                     # Inform the player about the quality of their decision
-                    player.inform_decision_quality([MAs.ActionType.ContinueInAuction], [(valid, [args])])
+                player.inform_decision_quality(state, [MAs.ActionType.ContinueInAuction], [(valid, [args])])
 
             # Update the list of players who will still be part of the auction
             players_in_auction = players_who_want_to_continue
@@ -164,7 +166,7 @@ class Bank:
                 # the player only receives the inform of the action when the response is accept
                 # None arguments are passed because there's no possibilty of the player taking an invalid 
                 # decision.
-                target_player.inform_decision_quality([MAs.ActionType.AcceptTradeOffer], None)
+                target_player.inform_decision_quality(state, [MAs.ActionType.AcceptTradeOffer], None)
 
         return (valid, args)
 
@@ -190,7 +192,7 @@ class Bank:
 
             if prop.type == "street":
                 # The only type of property that can have buildings are the streets
-                house_sell_money.append(prop.buildings  (0.5 * prop.house_price))
+                house_sell_money.append(prop.buildings * (0.5 * prop.house_price))
                 # Reseting the buildings bacl to the minimal
                 prop._reset_buildings()
                 # No street set is completed any longer
@@ -206,10 +208,12 @@ class Bank:
 
         # If the target player is None then bankrupt playe owes to the bank
         if target_player is None:
+            print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with bank\n")
             for prop in bankrupt_player.properties:
                 # Each one of his properties is put in auction
-                self.auction(complete_list_of_players, prop)
+                self.auction(complete_list_of_players, prop.property_index)
         else: # If the target player is not null the the bankrupt player's debt is with an oponent
+            print(f"\nPlayer in bankruptcy {bankrupt_player.player_id} with {target_player.player_id}\n")
             # All the money is transfered to the oponent
             total_money = bankrupt_player.money + sum(house_sell_money)
             target_player.receive_payment(total_money, f"Receiving {total_money} payment for bankrupting player {bankrupt_player.player_id}")
@@ -259,24 +263,30 @@ class Bank:
             # to get money, it has already been validated that the player is not in bankruptcy, so the only 
             # option is for him to sell houses or mortgage properties
 
-            aux = player.actions([MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], state)
-            sell_decision: MAs.PropertyActionStructure = aux[0]
-            mortgage_decision: MAs.PropertyActionStructure = aux[1]
+            oportunties = 0
+            while (not player.enough_money(amount_to_charge)) & (oportunties < 10):
+                aux = player.actions([MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], state)
+                sell_decision: MAs.PropertyActionStructure = aux[0]
+                mortgage_decision: MAs.PropertyActionStructure = aux[1]
 
-            # Mortgage transaction with mortgage decision
-            mortgage_quality = self.mortgage_transaction(mortgage_decision.associatedPropertyList, player)
+                # Mortgage transaction with mortgage decision
+                mortgage_quality = self.mortgage_transaction(mortgage_decision.associatedPropertyList, player)
 
-            # UnImprove transaction with sell decision
-            unimprove_quiality = self.unimprove_property_transaction(sell_decision.associatedPropertyList, player)
+                # UnImprove transaction with sell decision
+                unimprove_quality = self.unimprove_property_transaction(sell_decision.associatedPropertyList, player)
 
-            player.inform_decision_quality([MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], 
-                [unimprove_quiality, mortgage_quality])
+                player.inform_decision_quality(state, [MAs.ActionType.SellHouseOrHotel, MAs.ActionType.MortgageProperty], 
+                    [unimprove_quality, mortgage_quality])
 
-            # Update state after the actions
-            
-            # As a suposition, i believe th state updates by itself because of the pointers
+                # Update state after the actions
+                
+                # As a suposition, i believe th state updates by itself because of the pointers
+                oportunties += 1
 
-            self.charge_transaction(player, amount_to_charge, charging_entity, charge_info, payment_info, state)
+            if (oportunties < 10):
+                self.charge_transaction(player, amount_to_charge, charging_entity, charge_info, payment_info, state)
+            else:
+                self.player_on_bankruptcy(player, charging_entity, state.playersInGame)
 
     def improve_property_transaction(self, associated_property_list: List[int], player: Player):
         (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.player_id, associated_property_list)
@@ -390,29 +400,30 @@ class Bank:
         new_owner.add_property(property_to_transfer)
 
         if property_to_transfer.type == "street":
-            self.street_transfer_color_set_check(property_to_transfer, new_owner.player_id)
+            self.street_transfer_color_set_check(property_to_transfer, old_owner, new_owner)
         else:
-            self.property_transfer_set_check(property_to_transfer, old_owner.player_id, new_owner.player_id)
+            self.property_transfer_set_check(property_to_transfer, old_owner, new_owner)
 
     def transfer_property_bank_to_owner(self, property_to_transfer: BCs.Property, new_owner: Player):
         property_to_transfer._change_owner(new_owner)
         new_owner.add_property(property_to_transfer)
 
         if property_to_transfer.type == "street":
-            self.street_transfer_color_set_check(property_to_transfer, new_owner.player_id)
+            self.street_transfer_color_set_check(property_to_transfer, None, new_owner)
         else:
-            self.property_transfer_set_check(property_to_transfer, -1, new_owner.player_id)
+            self.property_transfer_set_check(property_to_transfer, None, new_owner)
 
-    def property_transfer_set_check(self, property_transfered: BCs.Property, old_owner_id: int, new_owner_id: int):
+    def property_transfer_set_check(self, property_transfered: BCs.Property, old_owner: Player, new_owner: Player):
         property_idxs = self.property_dic[property_transfered.type]
         belong_to_old_owner: List[int] = []
         belong_to_new_owner: List[int] = []
 
         for i in property_idxs:
             if self.properties[i].owner != None:
-                if self.properties[i].owner.player_id == old_owner_id:
-                    belong_to_old_owner.append(i)
-                elif self.properties[i].owner.player_id == new_owner_id:
+                if old_owner != None:
+                    if self.properties[i].owner.player_id == old_owner.player_id:
+                        belong_to_old_owner.append(i)
+                elif self.properties[i].owner.player_id == new_owner.player_id:
                     belong_to_new_owner.append(i)
 
         older_owner_new_rent = f"rent_{len(belong_to_old_owner) - 1}"
@@ -423,24 +434,29 @@ class Bank:
         for m in belong_to_new_owner:
             self.properties[m].rent = self.properties_data[new_owner_new_rent][self.properties[m].index]
 
-    def street_transfer_color_set_check(self, street_transfered: BCs.StreetProperty, new_owner_id: int):
+    def street_transfer_color_set_check(self, street_transfered: BCs.StreetProperty, old_owner: Player, new_owner: Player):
         streets_of_the_color_idxs: List[int] = self.property_dic[street_transfered.street_color]
         
         if street_transfered.set_completed:
             for i in streets_of_the_color_idxs:
                 self.properties[i].set_completed = False
-                self.properties.rent *= 0.5
+                self.properties[i].rent *= 0.5
+
+            if old_owner != None:
+                old_owner.sets_completed -= 1
 
         else:
             how_many_streets_of_the_color: int = 0
             for i in streets_of_the_color_idxs:
                 if self.properties[i].owner != None:
-                    if self.properties[i].owner.player_id == new_owner_id:
+                    if self.properties[i].owner.player_id == new_owner.player_id:
                         how_many_streets_of_the_color += 1
 
             if how_many_streets_of_the_color == len(streets_of_the_color_idxs):
                 for i in streets_of_the_color_idxs:
                     self.properties[i].set_completed = True
                     self.properties[i].rent *= 2
+
+                new_owner.sets_completed += 1
 
     #endregion AUX_FUNCTIONS

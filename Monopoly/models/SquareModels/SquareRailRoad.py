@@ -10,8 +10,9 @@ class SquareRailRoad(Square):
 
     def action(self, player: Player, bank: Bank, squares, state: RegularMonopolyState, dice):
         if self.board_component.owner != None:
-            rent = self.board_component.rent
-            name = self.board_component.name
-            bank.charge_transaction(player, self.board_component.rent, self.board_component.owner, 
-                f"Paying to {self.board_component.owner.player_id} the amount {rent} after falling in {name}",
-                f"Receiving {rent} from {player.player_id} for falling in {name}", state)
+            if self.board_component.owner.player_id != player.player_id:
+                rent = self.board_component.rent
+                name = self.board_component.name
+                bank.charge_transaction(player, self.board_component.rent, self.board_component.owner, 
+                    f"Paying to {self.board_component.owner.player_id} the amount {rent} after falling in {name}",
+                    f"Receiving {rent} from {player.player_id} for falling in {name}", state)
