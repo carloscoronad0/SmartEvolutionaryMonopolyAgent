@@ -78,9 +78,10 @@ class DdqnActor:
         
         return loss
 
-    def train(self, batch_percentage):
+    def train(self, batch_percentage, train_log, ag_id, actor_type):
         batch_size = round(self.memory_replay.push_count * batch_percentage)
         batch = self.memory_replay.sample(batch_size)
+        train_log.info(f"{ag_id};{actor_type};{batch_percentage};{batch_percentage}")
         self.optimizer.zero_grad()
 
         for experience in batch:

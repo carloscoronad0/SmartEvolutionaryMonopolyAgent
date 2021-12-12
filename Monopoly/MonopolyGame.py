@@ -16,10 +16,7 @@ GO_INDEX = 0
 MAX_ITERATIONS = 10000
 
 class MonopolyGame:
-    def __init__(self, agents: List[Agent]):
-        print("Agents in game: ")
-        print([ag.agent_id for ag in agents])
-
+    def __init__(self, agents: List[Agent], action_log, trade_log):
         player_number = len(agents)
         self.dice = [1, 1]
         self.jail_fine = 50
@@ -30,7 +27,8 @@ class MonopolyGame:
         self.table = MonopolyTable()
         (properties_data, property_list, street_list, property_dic) = self.table.load_squares()
 
-        self.bank = Bank(property_list, street_list, property_dic, properties_data)
+        self.bank = Bank(property_list, street_list, property_dic, properties_data, action_log, trade_log)
+        self.action_log = action_log
 
     def determine_player_order(self, players: List[Player]) -> List[Player]:
         """
@@ -78,7 +76,9 @@ class MonopolyGame:
 
         for action in player_action_list:
             performed_action_type.append(action.actionType)
-            player_actions_response.append(self.action_execution(player, action))
+            res = self.action_execution(player, action)
+            self.action_log.info(f"{player.agent.agent_id},{player.agent.agent_type},{action.actionType},{res[0]},{res[1]}")
+            player_actions_response.append(res)
             
         return (conclude_action.response, player_actions_response, performed_action_type)
 
@@ -250,12 +250,8 @@ class MonopolyGame:
             player_count = (player_count + 1) % len(self.players)
 
         if len(self.players) > 1:
-            print("Solving by net values")
             net_values = [pl.net_value() for pl in self.players]
             idx = np.argmax(net_values)
-            print(f"Players Net values: {net_values}")
-            print(f"Index: {idx}")
             return self.players[idx]
         else:
-            print("Complete winner")
             return self.players[0]
