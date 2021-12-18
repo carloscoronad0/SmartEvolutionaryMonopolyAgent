@@ -77,7 +77,10 @@ class MonopolyGame:
         for action in player_action_list:
             performed_action_type.append(action.actionType)
             res = self.action_execution(player, action)
-            self.action_log.info(f"{player.agent.agent_id},{player.agent.agent_type},{action.actionType},{res[0]},{res[1]}")
+            if res != None:
+                self.action_log.info(f"{player.agent.agent_id};{player.agent.agent_type};{action.actionType};{res[0]};{res[1]}")
+            else:
+                self.action_log.info(f"{player.agent.agent_id};{player.agent.agent_type};{action.actionType};None;None")
             player_actions_response.append(res)
             
         return (conclude_action.response, player_actions_response, performed_action_type)
@@ -145,7 +148,6 @@ class MonopolyGame:
                 return self.bank.buy_property_transaction(self.table.squares[player.position].board_component.property_index, 
                     player)
             else:
-                self.bank.auction(self.players, self.table.squares[player.position].board_component.property_index)
                 return None
 
     def step(self, player: Player, rest_of_players: List[Player]):
@@ -223,13 +225,19 @@ class MonopolyGame:
                 continue_actions = True
                 action_count = 0
 
-                while continue_actions & (action_count < MAX_ACTION_MOVES):
-                    if self.table.is_square_property_available(player.position):
-                        valid_decisions_to_take = MAs.POST_ROLL_COUTING_PROPERTY_ACTIONS
-                    else:
-                        valid_decisions_to_take = MAs.POST_ROLL_ACTIONS
+                if self.table.is_square_property_available(player.position):
+                    player_action_list = player.actions(MAs.POST_ROLL_COUTING_PROPERTY_ACTIONS, state)
+                    (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
+                    player.inform_decision_quality(state, performed, response_list)
 
-                    player_action_list = player.actions(valid_decisions_to_take, state)
+                    continue_actions = not conclude
+                    action_count += 1
+
+                if self.table.is_square_property_available(player.position):
+                    self.bank.auction(self.players, self.table.squares[player.position].board_component.property_index)
+
+                while continue_actions & (action_count < MAX_ACTION_MOVES):
+                    player_action_list = player.actions(MAs.POST_ROLL_ACTIONS, state)
                     (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
                     player.inform_decision_quality(state, performed, response_list)
 
@@ -252,6 +260,6 @@ class MonopolyGame:
         if len(self.players) > 1:
             net_values = [pl.net_value() for pl in self.players]
             idx = np.argmax(net_values)
-            return self.players[idx]
+            return self.players[idx], "By_net_value"
         else:
-            return self.players[0]
+            return self.players[0], "Complete_winner"

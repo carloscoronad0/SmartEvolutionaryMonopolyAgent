@@ -40,7 +40,6 @@ class SmartAgent(Agent):
 
     def take_decisions(self, valid_decisions_to_take: List[MAs.ActionType], state: MSs.MonopolyState) -> List[MAs.ActionStructure]:
 
-        self.last_action_initialization = state.stateType
         if state.stateType == MAs.ActionInitializationType.InitiatedByOtherEntity:
             return self.take_trading_decisions(state, valid_decisions_to_take)
         elif state.stateType == MAs.ActionInitializationType.InitiatedByPlayer:
@@ -49,12 +48,13 @@ class SmartAgent(Agent):
     def decision_quality(self, resulting_state: MSs.MonopolyState, decisions_to_inform: List[MAs.ActionType], 
         args_list):
 
-        if self.last_action_initialization == MAs.ActionInitializationType.InitiatedByOtherEntity:
+        if resulting_state.stateType == MAs.ActionInitializationType.InitiatedByOtherEntity:
             next_state = self.form_trading_state(resulting_state)
             (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_trade(resulting_state)
             reward = self.reward_function(p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny)
             self.trading_replay_memory.push(self.last_state, self.last_decision, reward, next_state)
-        else:
+
+        elif resulting_state.stateType == MAs.ActionInitializationType.InitiatedByPlayer:
             next_state = self.form_regular_state(resulting_state)
             (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_regular(resulting_state)
             reward = self.reward_function(p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny)
@@ -62,7 +62,6 @@ class SmartAgent(Agent):
 
         self.rewards_in_game += reward
         self.order_dic = None
-        self.last_action_initialization = None
         self.last_state = None
         self.last_decision = None
 
@@ -73,7 +72,6 @@ class SmartAgent(Agent):
 
         clone.agent_id = ag_id
         clone.agent_type = "smart"
-        clone.last_action_initialization = None
         clone.id_in_game = -1
         clone.rewards_in_game = 0
         clone.reward_count = 0
@@ -292,12 +290,12 @@ class SmartAgent(Agent):
             else:
                 total_info.extend([0 for _ in range(3)])
         # --------------------------------------------------------------------
-        total_info = np.array(total_info)
+        total_info_np = np.array(total_info)
 
-        self.last_state = np.copy(total_info)
+        self.last_state = np.array(total_info)
         self.order_dic = player_order
 
-        return total_info
+        return total_info_np
 
     # To return the offer (trade) state adapted to a numeric form (state space) for the neural network
     def form_trading_state(self, state: MSs.OfferActionMonopolyState) -> np.ndarray:
@@ -339,11 +337,11 @@ class SmartAgent(Agent):
         total_info.extend(initial_repr)
         total_info.extend(target_repr)
 
-        total_info = np.array(total_info)
+        total_info_np = np.array(total_info)
 
-        self.last_state = np.copy(total_info)
+        self.last_state = np.array(total_info)
 
-        return total_info
+        return total_info_np
 
     def get_binary_representation(self, prop_list: List[BCs.Property], size: int):
         binary_repr = [0 for _ in range(size)]

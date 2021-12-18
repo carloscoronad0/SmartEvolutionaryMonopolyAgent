@@ -16,6 +16,3 @@ class BasicBuffer:
   def sample(self, batch_size):
       batch = random.sample(self.buffer, batch_size)
       return batch
-
-  def __len__(self):
-      return len(self.buffer)

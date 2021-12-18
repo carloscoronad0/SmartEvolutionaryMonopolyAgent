@@ -34,6 +34,17 @@ class DdqnActor:
 
         self.optimizer = torch.optim.Adam(self.regular_net.parameters())
 
+    def info(self):
+        info = {
+            "learning_rate": self.learning_rate,
+            "gamma": self.gamma,
+            "tau": self.tau,
+            "epsilon": self.epsilon,
+            "regular dict": self.regular_net.get_info()
+        }
+
+        return info
+
     def clone(self):
         clone = type(self)(state_size = self.state_size,
                         decision_size = self.decision_size,
@@ -58,10 +69,6 @@ class DdqnActor:
         if random.uniform(0,1) < self.epsilon:
             decisions = np.array([round(random.uniform(0,1)) for _ in range(state.shape[0])])
 
-        if random.uniform(0,1) > 0.5:
-            # Save decision in memory replay
-            pass
-
         return decisions
 
     def compute_loss(self, state, action, reward, next_state):
@@ -81,13 +88,12 @@ class DdqnActor:
     def train(self, batch_percentage, train_log, ag_id, actor_type):
         batch_size = round(self.memory_replay.push_count * batch_percentage)
         batch = self.memory_replay.sample(batch_size)
-        train_log.info(f"{ag_id};{actor_type};{batch_percentage};{batch_percentage}")
-        self.optimizer.zero_grad()
+        train_log.info(f"{ag_id};{actor_type};{batch_percentage};{batch_size}")
 
         for experience in batch:
             state, action, reward, next_state = experience
             self.optimizer.zero_grad()
-            loss = self.compute_loss(state, action, reward, next_state)
+            loss = self.compute_loss(state, action, np.array(reward), next_state)
             loss.backward()
             self.optimizer.step()
         

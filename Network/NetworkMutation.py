@@ -5,7 +5,7 @@ from Network.DDQNActor import DdqnActor
 PARAMETER_MUTATION_SEED = 0.1
 RANDOM_SEED = 123
 
-HYPPARAM_MUTATION = ["learning_rate", "gamma", "tau", "epsilon", "batch"]
+HYPPARAM_MUTATION = ["learning_rate", "gamma", "tau", "epsilon"]
 
 MAX_LEARNING_RATE = 0.05
 MIN_LEARNING_RATE = 0.001
@@ -138,13 +138,13 @@ class Mutation:
         mutate_param = self.rng.choice(HYPPARAM_MUTATION, 1)[0]
 
         if mutate_param == "learning_rate":
-            self.mutate_hypp(actor.learning_rate, MAX_LEARNING_RATE, MIN_LEARNING_RATE, LEARNING_RATE_STEP)
+            actor.learning_rate = self.mutate_hypp(actor.learning_rate, MAX_LEARNING_RATE, MIN_LEARNING_RATE, LEARNING_RATE_STEP)
         elif mutate_param == "gamma":
-            self.mutate_hypp(actor.gamma, MAX_GAMMA, MIN_GAMMA, GAMMA_STEP)
+            actor.gamma = self.mutate_hypp(actor.gamma, MAX_GAMMA, MIN_GAMMA, GAMMA_STEP)
         elif mutate_param == "tau":
-            self.mutate_hypp(actor.tau, MAX_TAU, MIN_TAU, TAU_STEP)
+            actor.tau = self.mutate_hypp(actor.tau, MAX_TAU, MIN_TAU, TAU_STEP)
         elif mutate_param == "epsilon":
-            self.mutate_hypp(actor.epsilon, MAX_EPSILON, MIN_EPSILON, EPSILON_STEP)
+            actor.epsilon = self.mutate_hypp(actor.epsilon, MAX_EPSILON, MIN_EPSILON, EPSILON_STEP)
 
         return actor
 
@@ -156,3 +156,5 @@ class Mutation:
         else:
             if parameter < max_value:
                 parameter += step
+
+        return parameter
