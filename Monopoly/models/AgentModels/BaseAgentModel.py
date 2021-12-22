@@ -5,7 +5,6 @@ class Agent(ABC):
     def __init__(self, agent_id: int, agent_type: str):
         self.agent_id = agent_id
         self.agent_type = agent_type
-        self.last_action_initialization = None
         self.id_in_game = -1
         self.rewards_in_game = 0
         self.reward_count = 0
@@ -100,4 +99,3 @@ class Agent(ABC):
         self.id_in_game = -1
         self.rewards_in_game = 0
         self.reward_count = 0
-        self.last_action_initialization = None

@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict
 
 class Bank:
     def __init__(self, properties: List[BCs.Property], streets: List[BCs.StreetProperty], property_dic: Dict, 
-        properties_data):
+        properties_data, action_log, trade_log):
         """
         The properties list is important because the property_dic stores de property indexes
 
@@ -31,6 +31,10 @@ class Bank:
         self.streets = streets
         self.property_dic = property_dic
         self.properties_data = properties_data
+        self.action_log = action_log
+        self.trade_log = trade_log
+
+    #region OPONENT_INITIATED_TRANSACTION
 
     def auction(self, initial_players_in_auction: List[Player], property_in_auction_index: int):
         """
@@ -61,20 +65,20 @@ class Bank:
                 # The state for the auction --------------------------------------------------------------------
                 # The only relevant information is the property in auction, the highest money offer and it's own
                 # properties
-                state = OfferActionMonopolyState()
-                state.stateType = ActionInitializationType.InitiatedByOtherEntity
-                state.info = "From Bank in Auction process"
-                state.targetPlayer = player
-                state.offerdProperties = [property_in_auction]
-                state.moneyAsked = highest_money_offer
+                auc_state = OfferActionMonopolyState()
+                auc_state.stateType = ActionInitializationType.InitiatedByOtherEntity
+                auc_state.info = "From Bank in Auction process"
+                auc_state.targetPlayer = player
+                auc_state.offerdProperties = [property_in_auction]
+                auc_state.moneyAsked = highest_money_offer
                 # ----------------------------------------------------------------------------------------------
 
                 # Ask the player to take the specific auction decision based on the state passed
-                aux = player.actions([MAs.ActionType.ContinueInAuction], state)
+                aux = player.actions([MAs.ActionType.ContinueInAuction], auc_state)
                 decision: MAs.AuctionActionStructure = aux.pop(0)
                 # Valdiate the decision parameters
                 (valid, args) = OPAV._isAuctionDecisionValid(decision.moneyOffer, highest_money_offer, player.money)
-
+                self.action_log.info(f"{player.agent.agent_id};{player.agent.agent_type};{MAs.ActionType.ContinueInAuction};{valid};{args}")
                 # If the player wish to continue 
                 if decision.continueInAuction:
                     # If the player's bid is valid
@@ -85,7 +89,7 @@ class Bank:
                         players_who_want_to_continue.append(player)
                     
                     # Inform the player about the quality of their decision
-                player.inform_decision_quality(state, [MAs.ActionType.ContinueInAuction], [(valid, [args])])
+                player.inform_decision_quality(auc_state, [MAs.ActionType.ContinueInAuction], [(valid, [args])])
 
             # Update the list of players who will still be part of the auction
             players_in_auction = players_who_want_to_continue
@@ -125,19 +129,25 @@ class Bank:
         # If the decision is valid -> Must ask the target player if the trade is accepted
         if valid: 
             # Form the state of the trade environment 
-            state = OfferActionMonopolyState()
-            state.stateType = ActionInitializationType.InitiatedByOtherEntity
-            state.info = "From Bank in trade process"
-            state.initialPlayer = initial_player
-            state.targetPlayer = target_player
-            state.offerdProperties = valid_properties_offer
-            state.askedProperties = valid_properties_asked
-            state.moneyOffer = money_offer
-            state.moneyAsked = money_asked
+            trade_state = OfferActionMonopolyState()
+            trade_state.stateType = ActionInitializationType.InitiatedByOtherEntity
+            trade_state.info = "From Bank in trade process"
+            trade_state.initialPlayer = initial_player
+            trade_state.targetPlayer = target_player
+            trade_state.offerdProperties = valid_properties_offer
+            trade_state.askedProperties = valid_properties_asked
+            trade_state.moneyOffer = money_offer
+            trade_state.moneyAsked = money_asked
 
-            aux = target_player.actions([MAs.ActionType.AcceptTradeOffer], state)
+            aux = target_player.actions([MAs.ActionType.AcceptTradeOffer], trade_state)
             decision: MAs.BinaryActionStructure = aux.pop(0)
 
+            self.action_log.info(f"{target_player.agent.agent_id};{target_player.agent.agent_type};{MAs.ActionType.AcceptTradeOffer};{True};no_args")
+            
+            name_prop_off = [prop.name for prop in valid_properties_offer]
+            name_prop_ask = [prop.name for prop in valid_properties_asked]
+            self.trade_log.info(f"{initial_player.agent.agent_id};{name_prop_off};{name_prop_ask};{money_offer};{money_asked}")
+            
             if decision.response:
 
                 # Exchange Properties
@@ -164,13 +174,13 @@ class Bank:
                     f"\tAmount to receive: {target_pay_amount}")
                 initial_player.receive_payment(target_pay_amount, initial_player_receiving_details)
 
-                # Because Accept trade offer is only going to have effect when the player accepts the offer,
-                # the player only receives the inform of the action when the response is accept
-                # None arguments are passed because there's no possibilty of the player taking an invalid 
-                # decision.
-                target_player.inform_decision_quality(state, [MAs.ActionType.AcceptTradeOffer], None)
+            target_player.inform_decision_quality(trade_state, [MAs.ActionType.AcceptTradeOffer], None)
 
         return (valid, args)
+
+    #endregion OPONENT_INITIATED_TRANSACTION
+
+    #region MANDATORY_TRANSACTIONS
 
     def player_on_bankruptcy(self, bankrupt_player: Player, target_player: Player, complete_list_of_players: List[Player]):
         """
@@ -228,8 +238,6 @@ class Bank:
         # The bankrupt_player variable now points to nothing
         bankrupt_player.bankrupted = True
     
-    #region TRANSACTIONS
-
     def salary_transaction(self, player: Player, salary_amount: int, specifications: str):
         player.receive_payment(salary_amount, specifications)
 
@@ -290,6 +298,10 @@ class Bank:
                 self.charge_transaction(player, amount_to_charge, charging_entity, charge_info, payment_info, state)
             else:
                 self.player_on_bankruptcy(player, charging_entity, state.playersInGame)
+
+    #endregion MANDATORY_TRANSACTIONS
+
+    #region CHOOSEN_TRANSCTIONS
 
     def improve_property_transaction(self, associated_property_list: List[int], player: Player):
         (valid_streets, not_valid_streets) = self._get_indicated_properties(self.streets, player.player_id, associated_property_list)
@@ -374,7 +386,7 @@ class Bank:
 
         return (valid, args)
 
-    #endregion TRASANCTIONS
+    #endregion CHOOSEN_TRASANCTIONS
 
     #region AUX_FUNCTIONS
 

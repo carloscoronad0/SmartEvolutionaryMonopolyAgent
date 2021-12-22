@@ -18,7 +18,6 @@ class UserAgent(Agent):
         else:
             self.display_offer_action_game_state(state)
 
-        self.last_action_initialization = state.stateType
 
         decisions: List[MAs.ActionStructure] = []
 
@@ -36,14 +35,13 @@ class UserAgent(Agent):
             print(decisions_to_inform[i])
             print(args_list[i])
 
-        if self.last_action_initialization == MAs.ActionInitializationType.InitiatedByOtherEntity:
+        if resulting_state.stateType == MAs.ActionInitializationType.InitiatedByOtherEntity:
             (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_trade(resulting_state)
-        else:
+        elif resulting_state.stateType == MAs.ActionInitializationType.InitiatedByPlayer:
             (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_regular(resulting_state)
 
         reward = self.reward_function(p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny)
         self.rewards_in_game += reward
-        self.last_action_initialization = None
 
     def clone(self, ag_id):
         clone = type(self)(agent_id=ag_id)

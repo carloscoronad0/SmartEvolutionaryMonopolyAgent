@@ -31,6 +31,17 @@ class EvolvableNN(nn.Module):
         if stored_values is not None:
             self.inject_parameters(pvec=stored_values, without_layer_norm=False)
 
+    def get_info(self):
+        info = {
+            "num_inputs":self.num_inputs,
+            "hidden_size": self.hidden_size,
+            "activation": self.activation,
+            "num_outputs": self.num_outputs,
+            "output_activation": self.output_activation
+        }
+
+        return info
+
     def get_activation(self, activation_names):
         activation_functions = {'tanh': nn.Tanh, 'linear': nn.Identity, 'relu': nn.ReLU, 'elu': nn.ELU,
                                 'softsign': nn.Softsign, 'sigmoid': nn.Sigmoid, 'softplus': nn.Softplus,

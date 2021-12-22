@@ -5,7 +5,7 @@ from Network.DDQNActor import DdqnActor
 PARAMETER_MUTATION_SEED = 0.1
 RANDOM_SEED = 123
 
-HYPPARAM_MUTATION = ["learning_rate", "gamma", "tau", "epsilon", "batch"]
+HYPPARAM_MUTATION = ["learning_rate", "gamma", "tau", "epsilon"]
 
 MAX_LEARNING_RATE = 0.05
 MIN_LEARNING_RATE = 0.001
@@ -33,7 +33,6 @@ class Mutation:
     
     # NO MUTATION ------------------------------------------------------------------------
     def no_mutation(self, actor: DdqnActor) -> DdqnActor:
-        print("No mutation")
         return actor
     # ------------------------------------------------------------------------------------
 
@@ -78,8 +77,6 @@ class Mutation:
 
                 # Regularization hard limit
                 W[ind_dim1, ind_dim2] = self.regularize_weight(W[ind_dim1, ind_dim2], 1000000)
-
-        print("Weight mutation")
         
         return actor
 
@@ -94,8 +91,6 @@ class Mutation:
     def activation_mutation(self, actor: DdqnActor) -> DdqnActor:
         actor.regular_net = self._permutate_activation(actor.regular_net)
         actor.target_net = self._permutate_activation(actor.target_net)
-
-        print("Activation mutation")
 
         return actor
 
@@ -126,13 +121,9 @@ class Mutation:
             offspring_regular.add_layer()
             offspring_target.add_layer()
 
-            print("New layer mutation")
-
         else:
             node_dict = offspring_regular.add_node()
             offspring_target.add_node(**node_dict)
-
-            print("New node mutation")
 
         actor.regular_net = offspring_regular
         actor.target_net = offspring_target
@@ -147,15 +138,13 @@ class Mutation:
         mutate_param = self.rng.choice(HYPPARAM_MUTATION, 1)[0]
 
         if mutate_param == "learning_rate":
-            self.mutate_hypp(actor.learning_rate, MAX_LEARNING_RATE, MIN_LEARNING_RATE, LEARNING_RATE_STEP)
+            actor.learning_rate = self.mutate_hypp(actor.learning_rate, MAX_LEARNING_RATE, MIN_LEARNING_RATE, LEARNING_RATE_STEP)
         elif mutate_param == "gamma":
-            self.mutate_hypp(actor.gamma, MAX_GAMMA, MIN_GAMMA, GAMMA_STEP)
+            actor.gamma = self.mutate_hypp(actor.gamma, MAX_GAMMA, MIN_GAMMA, GAMMA_STEP)
         elif mutate_param == "tau":
-            self.mutate_hypp(actor.tau, MAX_TAU, MIN_TAU, TAU_STEP)
+            actor.tau = self.mutate_hypp(actor.tau, MAX_TAU, MIN_TAU, TAU_STEP)
         elif mutate_param == "epsilon":
-            self.mutate_hypp(actor.epsilon, MAX_EPSILON, MIN_EPSILON, EPSILON_STEP)
-
-        print(f"{mutate_param} mutation")
+            actor.epsilon = self.mutate_hypp(actor.epsilon, MAX_EPSILON, MIN_EPSILON, EPSILON_STEP)
 
         return actor
 
@@ -167,3 +156,5 @@ class Mutation:
         else:
             if parameter < max_value:
                 parameter += step
+
+        return parameter

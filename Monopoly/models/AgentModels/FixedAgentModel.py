@@ -35,19 +35,17 @@ class FixedAgent(Agent):
                 decisions.append(res)
 
         self.must_sell = False
-        self.last_action_initialization = state.stateType
 
         return decisions
     
     def decision_quality(self, resulting_state, decisions_to_inform, args_list):
-        if self.last_action_initialization == MAs.ActionInitializationType.InitiatedByOtherEntity:
+        if resulting_state.stateType == MAs.ActionInitializationType.InitiatedByOtherEntity:
             (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_trade(resulting_state)
-        else:
+        elif resulting_state.stateType == MAs.ActionInitializationType.InitiatedByPlayer:
             (p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny) = self.get_reward_parameters_from_regular(resulting_state)
 
         reward = self.reward_function(p_prop_num, mn_op_prop, num_clr_compl, h_build, pl_mny, mn_op_mny)
         self.rewards_in_game += reward
-        self.last_action_initialization = None
 
     def clone(self, ag_id):
         clone = type(self)(agent_id = ag_id,

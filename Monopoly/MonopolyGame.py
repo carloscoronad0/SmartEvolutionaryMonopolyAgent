@@ -16,10 +16,7 @@ GO_INDEX = 0
 MAX_ITERATIONS = 10000
 
 class MonopolyGame:
-    def __init__(self, agents: List[Agent]):
-        print("Agents in game: ")
-        print([ag.agent_id for ag in agents])
-
+    def __init__(self, agents: List[Agent], action_log, trade_log):
         player_number = len(agents)
         self.dice = [1, 1]
         self.jail_fine = 50
@@ -30,7 +27,8 @@ class MonopolyGame:
         self.table = MonopolyTable()
         (properties_data, property_list, street_list, property_dic) = self.table.load_squares()
 
-        self.bank = Bank(property_list, street_list, property_dic, properties_data)
+        self.bank = Bank(property_list, street_list, property_dic, properties_data, action_log, trade_log)
+        self.action_log = action_log
 
     def determine_player_order(self, players: List[Player]) -> List[Player]:
         """
@@ -78,7 +76,12 @@ class MonopolyGame:
 
         for action in player_action_list:
             performed_action_type.append(action.actionType)
-            player_actions_response.append(self.action_execution(player, action))
+            res = self.action_execution(player, action)
+            if res != None:
+                self.action_log.info(f"{player.agent.agent_id};{player.agent.agent_type};{action.actionType};{res[0]};{res[1]}")
+            else:
+                self.action_log.info(f"{player.agent.agent_id};{player.agent.agent_type};{action.actionType};None;None")
+            player_actions_response.append(res)
             
         return (conclude_action.response, player_actions_response, performed_action_type)
 
@@ -145,7 +148,6 @@ class MonopolyGame:
                 return self.bank.buy_property_transaction(self.table.squares[player.position].board_component.property_index, 
                     player)
             else:
-                self.bank.auction(self.players, self.table.squares[player.position].board_component.property_index)
                 return None
 
     def step(self, player: Player, rest_of_players: List[Player]):
@@ -223,13 +225,19 @@ class MonopolyGame:
                 continue_actions = True
                 action_count = 0
 
-                while continue_actions & (action_count < MAX_ACTION_MOVES):
-                    if self.table.is_square_property_available(player.position):
-                        valid_decisions_to_take = MAs.POST_ROLL_COUTING_PROPERTY_ACTIONS
-                    else:
-                        valid_decisions_to_take = MAs.POST_ROLL_ACTIONS
+                if self.table.is_square_property_available(player.position):
+                    player_action_list = player.actions(MAs.POST_ROLL_COUTING_PROPERTY_ACTIONS, state)
+                    (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
+                    player.inform_decision_quality(state, performed, response_list)
 
-                    player_action_list = player.actions(valid_decisions_to_take, state)
+                    continue_actions = not conclude
+                    action_count += 1
+
+                if self.table.is_square_property_available(player.position):
+                    self.bank.auction(self.players, self.table.squares[player.position].board_component.property_index)
+
+                while continue_actions & (action_count < MAX_ACTION_MOVES):
+                    player_action_list = player.actions(MAs.POST_ROLL_ACTIONS, state)
                     (conclude, response_list, performed) = self.perform_actions(player, player_action_list)
                     player.inform_decision_quality(state, performed, response_list)
 
@@ -250,12 +258,8 @@ class MonopolyGame:
             player_count = (player_count + 1) % len(self.players)
 
         if len(self.players) > 1:
-            print("Solving by net values")
             net_values = [pl.net_value() for pl in self.players]
             idx = np.argmax(net_values)
-            print(f"Players Net values: {net_values}")
-            print(f"Index: {idx}")
-            return self.players[idx]
+            return self.players[idx], "By_net_value"
         else:
-            print("Complete winner")
-            return self.players[0]
+            return self.players[0], "Complete_winner"
